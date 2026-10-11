@@ -753,7 +753,7 @@ function App() {
             <p className="editorial-signoff">Real moments.<br />Lasting impressions.</p>
           </div>
 
-          <a className="editorial-card editorial-card--main" href="#products">
+          <a className="editorial-card editorial-card--main" href="/product/lapis-lazuli-vintage-ring" aria-label="View Lapis Lazuli Vintage Ring">
             <img src="/assets/products/lapis-mother-of-pearl-ring/01-vintage-gold.png" alt="S925 Vintage Zircon Lapis Lazuli Ring" />
             <span className="editorial-card-gradient" />
             <span className="editorial-product-copy"><small>Rings</small><strong>Lapis Lazuli Vintage Ring</strong><em>View product <ArrowRight /></em></span>
@@ -761,13 +761,13 @@ function App() {
           </a>
 
           <div className="editorial-stack">
-            <a className="editorial-card" href="#products">
+            <a className="editorial-card" href="/product/statement-heart-zircon-earrings" aria-label="View Statement Heart Zircon Earrings">
               <img src="/assets/products/statement-heart-zircon-earrings/01-vintage-gold.png" alt="S925 Sterling Silver Statement Heart Zircon Earrings" />
               <span className="editorial-card-gradient" />
               <span className="editorial-product-copy"><small>Earrings</small><strong>Heart Zircon Earrings</strong><em>View product <ArrowRight /></em></span>
               <span className="editorial-product-plus">+</span>
             </a>
-            <a className="editorial-card" href="#products">
+            <a className="editorial-card" href="/product/gilded-bow-ring" aria-label="View Gilded Bow Ring">
               <img src="/assets/products/gilded-bow-ring/04-main.png" alt="Gilded Bow Ring" />
               <span className="editorial-card-gradient" />
               <span className="editorial-product-copy"><small>Rings</small><strong>Gilded Bow Ring</strong><em>View product <ArrowRight /></em></span>
