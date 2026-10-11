@@ -1,0 +1,35 @@
+[
+  {
+    "id": "gift-with-intention",
+    "active": true,
+    "eyebrow": "The gifting edit · Limited time",
+    "title": "A gift chosen with intention.",
+    "description": "Signature pieces, thoughtfully presented and ready for the moments worth celebrating.",
+    "buttonLabel": "Shop gifts",
+    "buttonHref": "/shop#sale-favourites",
+    "image": "/assets/hero/chrisea-collection-03.png",
+    "imageAlt": "CHRISÉA jewellery gift collection"
+  },
+  {
+    "id": "pearl-story",
+    "active": true,
+    "eyebrow": "The pearl story · New season",
+    "title": "Modern pearls, softly reimagined.",
+    "description": "Luminous details and romantic silhouettes designed to become part of your everyday story.",
+    "buttonLabel": "Explore pearls",
+    "buttonHref": "/shop?category=Bracelets#categories",
+    "image": "/assets/products/minimalist-pearl-bracelet/04-lifestyle.png",
+    "imageAlt": "Natural pearl bracelet styled in warm light"
+  },
+  {
+    "id": "evening-edit",
+    "active": true,
+    "eyebrow": "The evening edit · Curated for you",
+    "title": "A little more sparkle after dark.",
+    "description": "Vintage-inspired rings and statement details selected for dinners, celebrations and everything after.",
+    "buttonLabel": "Discover the edit",
+    "buttonHref": "/shop?category=Rings#categories",
+    "image": "/assets/editorial/styled-by-you-rings.png",
+    "imageAlt": "Vintage-inspired rings in an editorial setting"
+  }
+]

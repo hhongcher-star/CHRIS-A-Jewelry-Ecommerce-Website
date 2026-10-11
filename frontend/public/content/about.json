@@ -1,0 +1,44 @@
+{
+  "hero": {
+    "eyebrow": "The story of CHRISÉA",
+    "title": "Jewellery for the chapters you’ll always remember.",
+    "intro": "Born from a love of keepsakes, CHRISÉA brings vintage romance into the everyday through luminous pearls, meaningful motifs and thoughtfully selected details.",
+    "image": "/assets/about/about-hero.jpg",
+    "imageAlt": "Elegant woman wearing pearl jewellery"
+  },
+  "story": {
+    "eyebrow": "Our beginning",
+    "title": "A little nostalgia, made for now.",
+    "paragraphs": [
+      "CHRISÉA began with a simple belief: the jewellery we reach for most should feel as meaningful as the moments it becomes part of.",
+      "Our edit pairs old-world charm with an easy, modern sensibility. Each piece is chosen to layer naturally into your life—quietly elegant on ordinary days, and memorable enough for every celebration."
+    ],
+    "signature": "For every chapter, with love.",
+    "mainImage": "/assets/about/about-origin-main.jpg",
+    "detailImage": "/assets/about/about-origin-detail.jpg"
+  },
+  "valuesEyebrow": "What guides us",
+  "valuesTitle": "Beauty with meaning",
+  "values": [
+    { "number": "01", "title": "Thoughtfully chosen", "text": "Every detail is considered for its character, wearability and ability to feel personal." },
+    { "number": "02", "title": "Made for real life", "text": "Elegant pieces designed to move easily from everyday rituals to life's milestones." },
+    { "number": "03", "title": "Beautifully presented", "text": "From the piece to the packaging, every order is prepared to feel like a gift." }
+  ],
+  "quote": "The best jewellery does not simply complete a look. It keeps a feeling close.",
+  "journey": {
+    "eyebrow": "Our journey",
+    "title": "A story still unfolding",
+    "items": [
+      { "year": "2026", "title": "CHRISÉA begins", "text": "A curated jewellery house for modern romantics is born in Malaysia." },
+      { "year": "Today", "title": "Chosen with intention", "text": "We continue to discover pieces that balance sentiment, beauty and everyday ease." },
+      { "year": "Always", "title": "Made part of your story", "text": "Our favourite chapter is the one each piece begins with you." }
+    ]
+  },
+  "cta": {
+    "eyebrow": "Find your keepsake",
+    "title": "Wear the moment. Keep the memory.",
+    "buttonLabel": "Explore the collection",
+    "buttonHref": "/shop",
+    "image": "/assets/about/about-cta.jpg"
+  }
+}
