@@ -27,7 +27,7 @@ img { display: block; width: 100%; }
 .page-shell { overflow-x: clip; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-.announcement { height: 34px; overflow: hidden; position: relative; z-index: 31; background: var(--burgundy); color: #f8f3e9; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .2em; }
+.announcement { height: 34px; overflow: hidden; position: sticky; top: 0; z-index: 31; background: var(--burgundy); color: #f8f3e9; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .2em; }
 .announcement-track { width: max-content; height: 100%; display: flex; align-items: center; animation: announcement-scroll 16s linear infinite; will-change: transform; }
 .announcement-group { display: flex; align-items: center; flex-shrink: 0; white-space: nowrap; }
 .announcement-group span { padding: 0 34px; }
@@ -36,7 +36,7 @@ img { display: block; width: 100%; }
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(-50%, 0, 0); }
 }
-.site-header { height: 112px; padding: 0 64px; background: var(--ivory); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; border-bottom: 1px solid rgba(67,4,17,.08); position: sticky; top: 0; z-index: 30; box-shadow: 0 8px 24px rgba(67,4,17,.035); }
+.site-header { height: 112px; padding: 0 64px; background: var(--ivory); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; border-bottom: 1px solid rgba(67,4,17,.08); position: sticky; top: 34px; z-index: 30; box-shadow: 0 8px 24px rgba(67,4,17,.035); }
 .header-search { width: 225px; height: 42px; position: absolute; left: 64px; color: #430411; display: flex; align-items: center; gap: 10px; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 14px; }
 .header-search > svg { width: 17px; flex: 0 0 auto; }
 .header-search > input { width: 100%; padding: 5px 0; border: 0; border-bottom: 1px solid transparent; outline: 0; background: transparent; color: #430411; font: italic 14px 'Cormorant Garamond', serif; transition: border-color .25s; }
@@ -657,7 +657,7 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .announcement { height: 30px; font-size: 7px; letter-spacing: .12em; }
   .announcement-track { animation-duration: 13s; }
   .announcement-group span { padding: 0 22px; }
-  .site-header { height: 78px; padding: 0 16px; top: 0; }
+  .site-header { height: 78px; padding: 0 16px; top: 30px; }
   .brand-mark { width: 150px; height: 68px; }
   .brand-mark--logo img { width: 66px; height: 66px; }
   .brand-est { margin-bottom: 5px; font-size: 6px; }
@@ -758,9 +758,9 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .about-value-grid article, .about-value-grid article:nth-child(2), .about-value-grid article:nth-child(3) { min-height: 235px; padding: 27px 28px 31px; transform: none; }
   .about-value-grid article:hover, .about-value-grid article:nth-child(2):hover, .about-value-grid article:nth-child(3):hover { transform: none; }
   .about-value-grid h3 { margin: 49px 0 10px; font-size: 28px; }
-  .about-quote { padding-top: 80px; padding-bottom: 80px; }
+  .about-quote { padding-top: 48px; padding-bottom: 36px; }
   .about-quote p { font-size: 37px; }
-  .about-journey { min-height: 0; padding-top: 68px; padding-bottom: 76px; grid-template-columns: 1fr; }
+  .about-journey { min-height: 0; padding-top: 30px; padding-bottom: 76px; grid-template-columns: 1fr; }
   .about-journey::before { width: 280px; height: 280px; left: -160px; top: 22%; }
   .about-journey::after { display: none; }
   .about-journey-heading { min-height: 330px; padding: 49px 37px 65px; box-shadow: 13px 14px 0 rgba(67,4,17,.13); }
@@ -831,11 +831,11 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .reviews-hero-copy { width: auto; left: 24px; right: 24px; top: auto; bottom: 45px; transform: none; }
   .reviews-hero-copy h1 { font-size: 47px; }
   .reviews-hero-copy > p:last-child { max-width: 340px; font-size: 16px; }
-  .reviews-summary { padding-top: 35px; padding-bottom: 35px; grid-template-columns: 1fr; }
-  .reviews-score { padding: 0 0 27px; justify-content: center; border-right: 0; border-bottom: 1px solid rgba(67,4,17,.15); }
+  .reviews-summary { min-height: 0; padding-top: 20px; padding-bottom: 20px; grid-template-columns: 1fr; }
+  .reviews-score { padding: 0 0 18px; justify-content: center; border-right: 0; border-bottom: 1px solid rgba(248,243,233,.24); }
   .reviews-score > strong { font-size: 52px; }
-  .reviews-trust { padding-top: 27px; }
-  .reviews-trust > div { min-height: 95px; padding: 0 8px; display: flex; flex-direction: column; text-align: center; }
+  .reviews-trust { padding-top: 18px; }
+  .reviews-trust > div { min-height: 76px; padding: 0 8px; display: flex; flex-direction: column; text-align: center; }
   .reviews-trust svg { width: 24px; margin-bottom: 9px; }
   .reviews-trust strong { font-size: 13px; }
   .reviews-trust span { font-size: 10px; }
@@ -866,7 +866,8 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .cart-hero-shade { background: linear-gradient(0deg, #430411 0%, rgba(67,4,17,.92) 52%, rgba(67,4,17,.15) 100%); }
   .cart-hero > div:last-child { left: 24px; }
   .cart-hero h1 { font-size: 47px; }
-  .cart-layout { padding-top: 30px; padding-bottom: 60px; grid-template-columns: 1fr; gap: 38px; }
+  .cart-layout { padding-top: 18px; padding-bottom: 60px; grid-template-columns: 1fr; gap: 30px; }
+  .cart-empty { min-height: 0; padding: 36px 0 42px; }
   .cart-table-head { display: none; }
   .cart-item { min-height: 0; padding: 18px 0; grid-template-columns: 92px 1fr auto; gap: 0 13px; align-items: start; }
   .cart-item > a { width: 92px; height: 110px; grid-row: 1 / 4; }
@@ -1110,6 +1111,53 @@ body,
 .reviews-score span,
 .cart-item-info > span { color: var(--ivory); border-color: var(--ivory); }
 
+.reviews-page .reviews-score > strong,
+.reviews-page .reviews-score div > span,
+.reviews-page .reviews-score small { color: var(--ivory); }
+
+.reviews-page .reviews-service-strip span,
+.reviews-page .reviews-service-strip strong,
+.reviews-page .reviews-service-strip svg { color: var(--ivory); }
+
+.reviews-page .reviews-service-strip > div { border-color: rgba(248,243,233,.24); }
+
+/* Final contrast audit for every burgundy page surface. */
+.arrivals .eyebrow,
+.story .eyebrow,
+.promise .eyebrow,
+.about-page main .eyebrow,
+.shop-page main .eyebrow,
+.reviews-page main .eyebrow { color: var(--ivory); }
+
+.arrivals .short-rule,
+.story .short-rule,
+.promise .short-rule { background: rgba(248,243,233,.75); }
+
+.arrivals .button-dark,
+.story .button-dark,
+.editorial-edit .button-dark { background: var(--ivory); color: var(--burgundy); }
+
+.product-page .product-accordions summary,
+.product-page .product-accordions details p,
+.product-page .quantity-control button { color: var(--ivory); }
+
+.receipt-page .receipt-status h2,
+.receipt-page .receipt-status p,
+.receipt-page .receipt-meta span,
+.receipt-page .receipt-meta strong,
+.receipt-page .receipt-items h3,
+.receipt-page .receipt-items span,
+.receipt-page .receipt-items strong,
+.receipt-page .receipt-summary h2,
+.receipt-page .receipt-summary span,
+.receipt-page .receipt-summary strong,
+.receipt-page .receipt-summary p { color: var(--ivory); }
+
+.receipt-page .receipt-summary > button { border-color: var(--ivory); color: var(--ivory); }
+
+.cart-page .cart-checkout.is-disabled { background: rgba(248,243,233,.08); color: rgba(248,243,233,.72); }
+.cart-page .cart-continue { color: var(--ivory); border-color: var(--ivory); }
+
 .view-product-button,
 .product-buy-now,
 .reviews-toolbar button,
@@ -1132,3 +1180,413 @@ body,
 .cart-empty a { color: var(--ivory); border-color: var(--ivory); }
 .cart-promo input { background: transparent; border-color: rgba(248,243,233,.35); color: var(--ivory); }
 .cart-promo input::placeholder { color: rgba(248,243,233,.55); }
+
+.cart-page .cart-summary > h2,
+.cart-page .cart-summary-row,
+.cart-page .cart-summary-total,
+.cart-page .cart-promo label,
+.cart-page .cart-promo button,
+.cart-page .cart-promo > p,
+.cart-page .cart-benefits span,
+.cart-page .cart-benefits strong,
+.cart-page .cart-benefits svg { color: var(--ivory); }
+
+.cart-page .cart-promo > div,
+.cart-page .cart-promo button,
+.cart-page .cart-benefits,
+.cart-page .cart-summary-total { border-color: rgba(248,243,233,.24); }
+
+/* Light cards keep dark, readable labels on the burgundy canvas. */
+.category-card,
+.category-card h2,
+.category-card span,
+.category-card svg { color: var(--burgundy); }
+
+/* Cart primary action: ivory background with burgundy label. */
+.cart-page button.cart-checkout:not(.is-disabled) {
+  background: var(--ivory);
+  border-color: var(--ivory);
+  color: var(--burgundy);
+}
+
+/* Centred, shareable receipt. */
+.receipt-page .receipt-layout {
+  display: flex;
+  justify-content: center;
+  padding-top: 64px;
+  padding-bottom: 90px;
+}
+
+.receipt-page .receipt-paper {
+  position: relative;
+  width: min(820px, 100%);
+  padding: clamp(28px, 5vw, 58px);
+  background: var(--ivory);
+  color: var(--burgundy);
+  border: 1px solid rgba(67,4,17,.14);
+  box-shadow: 0 30px 80px rgba(20,0,5,.28);
+}
+
+.receipt-paper-head,
+.receipt-paper-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.receipt-paper-head {
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(67,4,17,.16);
+}
+
+.receipt-paper-head p {
+  margin: 0 0 5px;
+  color: rgba(67,4,17,.62);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.receipt-paper-head h2 {
+  margin: 0;
+  color: var(--burgundy);
+  font: 500 30px 'Cormorant Garamond', serif;
+}
+
+.receipt-paper-head button,
+.receipt-paper-footer button {
+  min-height: 44px;
+  padding: 0 19px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--burgundy);
+  background: var(--burgundy);
+  color: var(--ivory);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.receipt-page .receipt-status,
+.receipt-page .receipt-summary {
+  background: transparent;
+  border-color: rgba(67,4,17,.16);
+  box-shadow: none;
+}
+
+.receipt-page .receipt-meta,
+.receipt-page .receipt-meta > div,
+.receipt-page .receipt-items article,
+.receipt-page .receipt-summary footer {
+  border-color: rgba(67,4,17,.14);
+}
+
+.receipt-page .receipt-status h2,
+.receipt-page .receipt-status p,
+.receipt-page .receipt-meta span,
+.receipt-page .receipt-meta strong,
+.receipt-page .receipt-items h2,
+.receipt-page .receipt-items h3,
+.receipt-page .receipt-items p,
+.receipt-page .receipt-items span,
+.receipt-page .receipt-items strong,
+.receipt-page .receipt-summary h2,
+.receipt-page .receipt-summary span,
+.receipt-page .receipt-summary strong,
+.receipt-page .receipt-summary footer,
+.receipt-page .receipt-paper-footer p {
+  color: var(--burgundy);
+}
+
+.receipt-page .receipt-status small { color: rgba(67,4,17,.64); }
+.receipt-page .receipt-meta { margin-bottom: 34px; }
+.receipt-page .receipt-summary { margin-top: 38px; padding: 28px 30px; }
+.receipt-page .receipt-summary > p,
+.receipt-page .receipt-summary > button { display: none; }
+
+.receipt-paper-footer {
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(67,4,17,.16);
+}
+
+.receipt-paper-footer p {
+  margin: 0;
+  font: italic 18px 'Cormorant Garamond', serif;
+}
+
+.receipt-share-message {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  padding: 10px 14px;
+  background: var(--burgundy);
+  color: var(--ivory);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+
+@media (max-width: 720px) {
+  .receipt-page .receipt-layout { padding: 26px 16px 52px; }
+  .receipt-page .receipt-paper { padding: 25px 20px; }
+  .receipt-paper-head { align-items: flex-start; flex-direction: column; }
+  .receipt-paper-head button { width: 100%; }
+  .receipt-page .receipt-meta { grid-template-columns: 1fr; }
+  .receipt-page .receipt-summary { padding: 22px 18px; }
+  .receipt-paper-footer { align-items: flex-start; flex-direction: column; }
+  .receipt-paper-footer button { width: 100%; }
+}
+
+/* Refined desktop receipt proportions. */
+.receipt-page .receipt-stage {
+  min-height: calc(100vh - 160px);
+  display: grid;
+  place-items: center;
+  padding: 52px 20px 72px;
+  background:
+    radial-gradient(circle at 50% 5%, rgba(248,243,233,.08), transparent 34%),
+    var(--burgundy);
+}
+
+.receipt-page .receipt-layout {
+  width: 100%;
+  padding: 0;
+}
+
+.receipt-page .receipt-paper {
+  width: min(640px, 100%);
+  padding: 38px 42px 34px;
+  box-shadow: 0 24px 65px rgba(18,0,4,.32);
+}
+
+.receipt-page .receipt-paper::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(67,4,17,.09);
+  pointer-events: none;
+}
+
+.receipt-page .receipt-paper-head {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+}
+
+.receipt-page .receipt-paper-head h2 { font-size: 26px; }
+.receipt-page .receipt-paper-head button { min-height: 39px; padding: 0 15px; }
+
+.receipt-page .receipt-status {
+  padding: 20px 22px;
+  grid-template-columns: 44px 1fr;
+  gap: 15px;
+}
+
+.receipt-page .receipt-status > span {
+  width: 42px;
+  height: 42px;
+  font-size: 17px;
+}
+
+.receipt-page .receipt-status h2 { font-size: 23px; }
+.receipt-page .receipt-meta { margin: 18px 0 25px; }
+.receipt-page .receipt-meta > div { min-height: 68px; padding: 13px 15px; }
+.receipt-page .receipt-items > h2 { margin-bottom: 12px; font-size: 25px; }
+.receipt-page .receipt-items article { min-height: 88px; padding: 11px 0; grid-template-columns: 66px 1fr auto; gap: 14px; }
+.receipt-page .receipt-items img { width: 66px; height: 66px; }
+.receipt-page .receipt-items h3 { font-size: 17px; }
+
+.receipt-page .receipt-summary {
+  margin-top: 24px;
+  padding: 20px 22px;
+}
+
+.receipt-page .receipt-summary > h2 { margin-bottom: 15px; font-size: 25px; }
+.receipt-page .receipt-summary > div { margin-bottom: 10px; font-size: 14px; }
+.receipt-page .receipt-summary footer { margin-top: 14px; padding-top: 14px; font-size: 18px; }
+.receipt-page .receipt-summary footer strong { font-size: 23px; }
+
+.receipt-page .receipt-paper-footer {
+  margin-top: 22px;
+  padding: 18px 0 0;
+  display: block;
+  background: transparent;
+  color: var(--burgundy);
+}
+
+.receipt-page .receipt-paper-footer button {
+  min-height: 39px;
+  padding: 0 16px;
+  background: transparent;
+  color: var(--burgundy);
+}
+
+.receipt-page .receipt-paper-footer > p {
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.receipt-footer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.receipt-page .receipt-footer-actions button,
+.receipt-page .receipt-footer-actions a {
+  width: 100%;
+  min-height: 43px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--burgundy);
+  background: transparent;
+  color: var(--burgundy);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .13em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.receipt-page .receipt-footer-actions a {
+  background: var(--burgundy);
+  color: var(--ivory);
+}
+
+@media (max-width: 720px) {
+  .receipt-page .receipt-stage { display: block; min-height: 0; padding: 24px 14px 48px; }
+  .receipt-page .receipt-paper { padding: 27px 20px 24px; }
+  .receipt-page .receipt-items article { grid-template-columns: 62px 1fr; }
+  .receipt-page .receipt-items article > strong { grid-column: 2; }
+  .receipt-page .receipt-paper-footer { display: block; }
+  .receipt-page .receipt-paper-footer button { width: 100%; }
+  .receipt-footer-actions { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .receipt-page .receipt-footer-actions button,
+  .receipt-page .receipt-footer-actions a { min-height: 48px; padding: 0 8px; font-size: 7px; }
+}
+
+@media (max-width: 720px) {
+  .product-page .product-buy-now,
+  .product-page .product-buy-now svg {
+    color: var(--burgundy);
+    stroke: var(--burgundy);
+  }
+
+  .product-page .product-buy-now:hover {
+    background: var(--ivory);
+    color: var(--burgundy);
+  }
+}
+
+/* Post-purchase share reminder. */
+.receipt-prompt-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(25,0,6,.72);
+  backdrop-filter: blur(5px);
+}
+
+.receipt-prompt {
+  position: relative;
+  width: min(480px, 100%);
+  padding: 46px 48px 42px;
+  border: 1px solid rgba(67,4,17,.18);
+  outline: 1px solid rgba(248,243,233,.62);
+  outline-offset: -10px;
+  background: var(--ivory);
+  color: var(--burgundy);
+  box-shadow: 0 28px 90px rgba(18,0,5,.45);
+  text-align: center;
+}
+
+.receipt-prompt-close {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--burgundy);
+  cursor: pointer;
+}
+
+.receipt-prompt-icon {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--burgundy);
+  color: var(--ivory);
+  font: 28px 'Cormorant Garamond', serif;
+}
+
+.receipt-prompt > p:first-of-type {
+  margin: 0 0 9px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+}
+
+.receipt-prompt h2 {
+  margin: 0;
+  color: var(--burgundy);
+  font: 500 36px/1.02 'Cormorant Garamond', serif;
+}
+
+.receipt-prompt-rule {
+  width: 40px;
+  height: 1px;
+  margin: 22px auto;
+  background: var(--burgundy);
+}
+
+.receipt-prompt .receipt-prompt-copy {
+  max-width: 360px;
+  margin: 0 auto 26px;
+  color: rgba(67,4,17,.74);
+  font: 17px/1.45 'Cormorant Garamond', serif;
+}
+
+.receipt-prompt-share {
+  width: 100%;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--burgundy);
+  background: var(--burgundy);
+  color: var(--ivory);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 520px) {
+  .receipt-prompt-backdrop { padding: 17px; }
+  .receipt-prompt { padding: 40px 27px 30px; }
+  .receipt-prompt h2 { font-size: 31px; }
+  .receipt-prompt .receipt-prompt-copy { font-size: 16px; }
+}

@@ -11,9 +11,9 @@ export const heroSlides = [
     description: 'Discover the beauty in every detail.',
     cta: 'Explore Collection',
     href: '#new',
-    image: '/assets/hero/chrisea-model-red.png',
-    position: 'center 43%',
-    mobilePosition: '57% center',
+    image: '/assets/hero/chrisea-jewelry-heart-hero.png',
+    position: 'center center',
+    mobilePosition: '68% center',
   },
   {
     collection: 'CHRISÉA / COLLECTION 02',
@@ -22,9 +22,9 @@ export const heroSlides = [
     description: 'Jewelry for every chapter.',
     cta: 'Shop Collection',
     href: '#new',
-    image: '/assets/hero/chrisea-collection-02.png',
-    position: 'center 42%',
-    mobilePosition: '61% center',
+    image: '/assets/hero/chrisea-jewelry-ring-hero.png',
+    position: 'center center',
+    mobilePosition: '68% center',
   },
   {
     collection: 'CHRISÉA / COLLECTION 03',
@@ -33,9 +33,9 @@ export const heroSlides = [
     description: 'Celebrate every meaningful moment.',
     cta: 'Discover More',
     href: '#promotion',
-    image: '/assets/hero/chrisea-collection-03.png',
+    image: '/assets/hero/chrisea-jewelry-bracelet-hero.png',
     position: 'center center',
-    mobilePosition: '64% center',
+    mobilePosition: '70% center',
   },
 ];
 

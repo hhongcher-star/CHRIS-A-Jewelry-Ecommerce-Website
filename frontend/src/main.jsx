@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client';
 import {
   ArrowRight,
   Camera,
+  Download,
   Gem,
   Gift,
   Heart,
+  House,
   Menu,
   Search,
+  Share2,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
@@ -296,11 +299,11 @@ function SiteFooter() {
 }
 
 const aboutFallback = {
-  hero: { eyebrow: 'The story of CHRISÉA', title: 'Jewellery for the chapters you’ll always remember.', intro: 'Born from a love of keepsakes, CHRISÉA brings vintage romance into the everyday.', image: '/assets/about/about-hero.jpg', imageAlt: 'Elegant woman wearing pearl jewellery' },
+  hero: { eyebrow: 'The story of CHRISÉA', title: 'Jewellery for the chapters you’ll always remember.', intro: 'Born from a love of keepsakes, CHRISÉA brings vintage romance into the everyday.', image: 'https://images.unsplash.com/photo-1710753495822-3f1a0b7cfb8d?auto=format&fit=crop&w=2400&q=85', imageAlt: 'Gold jewellery arranged inside a red velvet box' },
   story: { eyebrow: 'Our beginning', title: 'A little nostalgia, made for now.', paragraphs: ['CHRISÉA began with a simple belief: the jewellery we reach for most should feel as meaningful as the moments it becomes part of.'], signature: 'For every chapter, with love.', mainImage: '/assets/about/about-origin-main.jpg', detailImage: '/assets/about/about-origin-detail.jpg' },
   valuesEyebrow: 'What guides us', valuesTitle: 'Beauty with meaning', values: [], quote: 'The best jewellery does not simply complete a look. It keeps a feeling close.',
   journey: { eyebrow: 'Our journey', title: 'A story still unfolding', items: [] },
-  cta: { eyebrow: 'Find your keepsake', title: 'Wear the moment. Keep the memory.', buttonLabel: 'Explore the collection', buttonHref: '/shop', image: '/assets/about/about-cta.jpg' },
+  cta: { eyebrow: 'Find your keepsake', title: 'Wear the moment. Keep the memory.', buttonLabel: 'Explore the collection', buttonHref: '/shop', image: 'https://images.unsplash.com/photo-1725918319267-ec6bf04c981b?auto=format&fit=crop&w=2400&q=85' },
 };
 
 function AboutPage() {
@@ -374,7 +377,7 @@ function AboutPage() {
 }
 
 const promotionFallback = [
-  { id: 'signature-edit', active: true, eyebrow: 'The signature edit', title: 'A little something, just for you.', description: 'Discover handpicked pieces made for gifting, keeping and every meaningful moment between.', buttonLabel: 'Shop the edit', buttonHref: '/shop#sale-favourites', image: '/assets/editorial/styled-by-you-main.png', imageAlt: 'CHRISÉA signature jewellery edit' },
+  { id: 'signature-edit', active: true, eyebrow: 'The signature edit', title: 'A little something, just for you.', description: 'Discover handpicked pieces made for gifting, keeping and every meaningful moment between.', buttonLabel: 'Shop the edit', buttonHref: '/shop#sale-favourites', image: 'https://images.unsplash.com/photo-1578632297758-3a6c6de14be8?auto=format&fit=crop&w=2400&q=85', imageAlt: 'Gold and silver rings on a red velvet jewellery box' },
 ];
 
 function ShopPromotionSlider() {
@@ -584,7 +587,7 @@ function ReviewsPage() {
       <Header />
       <main>
         <section className="reviews-hero">
-          <img src="/assets/reviews/reviews-hero.jpg" alt="Woman wearing delicate gold jewellery" />
+          <img src="https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85" alt="Gold stud earrings presented in a red jewellery box" />
           <div className="reviews-hero-shade" />
           <div className="reviews-hero-copy"><p>The CHRISÉA experience</p><h1>Loved, Worn<br />&amp; Cherished.</h1><span /><p>Stories from our community—because the most meaningful pieces are the ones that become part of your story.</p></div>
         </section>
@@ -688,19 +691,182 @@ function ReceiptPage() {
   const [receipt] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem('chrisea-latest-receipt') || 'null'); } catch { return null; }
   });
+  const [shareMessage, setShareMessage] = useState('');
+  const [showSharePrompt, setShowSharePrompt] = useState(Boolean(receipt));
+  const [receiptImageUrl, setReceiptImageUrl] = useState('');
   const placedDate = receipt ? new Intl.DateTimeFormat('en-MY', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(receipt.placedAt)) : '';
+  const createReceiptImage = async () => {
+    if (!receipt) throw new Error('No receipt');
+    const productImages = await Promise.all(receipt.items.map((item) => new Promise((resolve) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = item.image;
+    })));
+    const width = 1200;
+    const itemHeight = 175;
+    const height = 900 + receipt.items.length * itemHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    const burgundy = '#430411';
+    const ivory = '#f8f3e9';
+    ctx.fillStyle = ivory;
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = 'rgba(67,4,17,.28)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(28, 28, width - 56, height - 56);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = burgundy;
+    ctx.font = '600 18px Montserrat, sans-serif';
+    ctx.fillText('OFFICIAL RECEIPT', width / 2, 92);
+    ctx.font = '500 60px Georgia, serif';
+    ctx.fillText('CHRISÉA Jewellery', width / 2, 165);
+    ctx.font = 'italic 25px Georgia, serif';
+    ctx.fillText('Your order is confirmed.', width / 2, 220);
+    ctx.beginPath(); ctx.moveTo(90, 260); ctx.lineTo(width - 90, 260); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.font = '600 15px Montserrat, sans-serif';
+    ctx.fillText('ORDER NUMBER', 90, 310);
+    ctx.fillText('ORDER DATE', 455, 310);
+    ctx.fillText('STATUS', 850, 310);
+    ctx.font = '28px Georgia, serif';
+    ctx.fillText(receipt.id, 90, 350);
+    ctx.fillText(placedDate, 455, 350);
+    ctx.fillText('Being prepared', 850, 350);
+    ctx.beginPath(); ctx.moveTo(90, 390); ctx.lineTo(width - 90, 390); ctx.stroke();
+    ctx.font = '500 38px Georgia, serif';
+    ctx.fillText('Your pieces', 90, 450);
+    let y = 510;
+    receipt.items.forEach((item, index) => {
+      const lineTotal = Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity;
+      const productImage = productImages[index];
+      if (productImage) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(90, y - 25, 122, 122);
+        ctx.clip();
+        const scale = Math.max(122 / productImage.naturalWidth, 122 / productImage.naturalHeight);
+        const drawWidth = productImage.naturalWidth * scale;
+        const drawHeight = productImage.naturalHeight * scale;
+        ctx.drawImage(productImage, 90 + (122 - drawWidth) / 2, y - 25 + (122 - drawHeight) / 2, drawWidth, drawHeight);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(67,4,17,.18)';
+        ctx.strokeRect(90, y - 25, 122, 122);
+      }
+      ctx.font = '500 29px Georgia, serif';
+      ctx.fillText(item.name, 240, y);
+      ctx.font = '20px Montserrat, sans-serif';
+      ctx.fillStyle = 'rgba(67,4,17,.72)';
+      ctx.fillText(item.detail, 240, y + 38);
+      ctx.fillText(`Quantity: ${item.quantity}`, 240, y + 75);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = burgundy;
+      ctx.font = '600 24px Montserrat, sans-serif';
+      ctx.fillText(`RM ${lineTotal.toFixed(2)}`, width - 90, y + 32);
+      ctx.textAlign = 'left';
+      ctx.beginPath(); ctx.moveTo(90, y + 132); ctx.lineTo(width - 90, y + 132); ctx.stroke();
+      y += itemHeight;
+    });
+    ctx.font = '24px Georgia, serif';
+    ctx.fillText('Subtotal', 90, y + 20);
+    ctx.fillText('Shipping', 90, y + 70);
+    ctx.textAlign = 'right';
+    ctx.fillText(`RM ${receipt.subtotal.toFixed(2)}`, width - 90, y + 20);
+    ctx.fillText('Complimentary', width - 90, y + 70);
+    ctx.beginPath(); ctx.moveTo(90, y + 110); ctx.lineTo(width - 90, y + 110); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.font = '500 38px Georgia, serif';
+    ctx.fillText('Total', 90, y + 175);
+    ctx.textAlign = 'right';
+    ctx.font = '500 46px Georgia, serif';
+    ctx.fillText(`RM ${receipt.total.toFixed(2)}`, width - 90, y + 175);
+    ctx.textAlign = 'center';
+    ctx.font = 'italic 25px Georgia, serif';
+    ctx.fillText('Thank you for choosing CHRISÉA.', width / 2, height - 85);
+    return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Unable to create receipt image')), 'image/png', 1));
+  };
+  useEffect(() => {
+    if (!receipt) return undefined;
+    let active = true;
+    let preparedUrl = '';
+    createReceiptImage().then((blob) => {
+      if (!active) return;
+      preparedUrl = URL.createObjectURL(blob);
+      setReceiptImageUrl(preparedUrl);
+    }).catch(() => setShareMessage('Unable to prepare receipt image'));
+    return () => {
+      active = false;
+      if (preparedUrl) URL.revokeObjectURL(preparedUrl);
+    };
+  }, [receipt]);
+  const triggerReceiptDownload = (url) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `CHRISEA-${receipt.id}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+  const downloadReceipt = async () => {
+    if (!receiptImageUrl) return;
+    triggerReceiptDownload(receiptImageUrl);
+    setShareMessage('Receipt image downloaded');
+    window.setTimeout(() => setShareMessage(''), 2800);
+  };
+  const shareReceipt = () => {
+    if (!receipt || !receiptImageUrl) return;
+    try {
+      triggerReceiptDownload(receiptImageUrl);
+      const itemLines = receipt.items.map((item) => `• ${item.name} × ${item.quantity} — RM ${(Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity).toFixed(2)}`);
+      const message = [
+        'CHRISÉA RECEIPT INFORMATION',
+        `Order number: ${receipt.id}`,
+        `Order date: ${placedDate}`,
+        '',
+        ...itemLines,
+        '',
+        `Subtotal: RM ${receipt.subtotal.toFixed(2)}`,
+        'Shipping: Complimentary',
+        `Total: RM ${receipt.total.toFixed(2)}`,
+      ].join('\n');
+      const whatsappUrl = `https://wa.me/60167738560?text=${encodeURIComponent(message)}`;
+      setShareMessage('Receipt downloaded — opening WhatsApp…');
+      window.setTimeout(() => {
+        window.location.assign(whatsappUrl);
+      }, 700);
+    } catch (error) {
+      if (error?.name !== 'AbortError') setShareMessage('Unable to share. Please try again.');
+    }
+    window.setTimeout(() => setShareMessage(''), 2800);
+  };
   return (
     <div className="page-shell receipt-page">
       <Header />
-      <main>
-        <section className="receipt-hero"><p>Order receipt</p><h1>Thank you for choosing CHRISÉA.</h1><span /><p>Your jewellery story has begun.</p></section>
+      {showSharePrompt && <div className="receipt-prompt-backdrop" role="presentation">
+        <section className="receipt-prompt" role="dialog" aria-modal="true" aria-labelledby="receipt-prompt-title">
+          <button className="receipt-prompt-close" type="button" aria-label="Close" onClick={() => setShowSharePrompt(false)}><X size={18} /></button>
+          <span className="receipt-prompt-icon">♡</span>
+          <p>Thank you</p>
+          <h2 id="receipt-prompt-title">Thank you for shopping with CHRISÉA.</h2>
+          <div className="receipt-prompt-rule" />
+          <p className="receipt-prompt-copy">Please share your payment record together with this receipt so we can verify your payment and prepare your order.</p>
+          <button className="receipt-prompt-share" type="button" disabled={!receiptImageUrl} onClick={() => { setShowSharePrompt(false); shareReceipt(); }}><Share2 size={15} /> {receiptImageUrl ? 'Share receipt' : 'Preparing receipt…'}</button>
+        </section>
+      </div>}
+      <main className="receipt-stage">
         {receipt ? <section className="receipt-layout section-pad">
-          <div className="receipt-main">
+          <article className="receipt-paper">
+            <header className="receipt-paper-head"><div><p>Official receipt</p><h2>CHRISÉA Jewellery</h2></div><button type="button" disabled={!receiptImageUrl} onClick={shareReceipt}><Share2 size={15} /> {receiptImageUrl ? 'Share receipt' : 'Preparing…'}</button></header>
             <div className="receipt-status"><span>✓</span><div><p>Order received</p><h2>Your order is confirmed.</h2><small>A copy of these details can be kept for your records.</small></div></div>
             <div className="receipt-meta"><div><span>Order number</span><strong>{receipt.id}</strong></div><div><span>Order date</span><strong>{placedDate}</strong></div><div><span>Status</span><strong>Being prepared</strong></div></div>
             <section className="receipt-items"><h2>Your pieces</h2>{receipt.items.map((item) => <article key={item.name}><img src={item.image} alt={item.name} /><div><h3>{item.name}</h3><p>{item.detail}</p><span>Quantity: {item.quantity}</span></div><strong>RM {(Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity).toFixed(2)}</strong></article>)}</section>
-          </div>
-          <aside className="receipt-summary"><h2>Receipt Summary</h2><div><span>Subtotal</span><strong>RM {receipt.subtotal.toFixed(2)}</strong></div>{receipt.discount > 0 && <div><span>Discount</span><strong>− RM {(receipt.subtotal * receipt.discount).toFixed(2)}</strong></div>}<div><span>Shipping</span><strong>Complimentary</strong></div><footer><span>Total</span><strong>RM {receipt.total.toFixed(2)}</strong></footer><p>Questions about your order?</p><button type="button" onClick={() => window.location.href = '/#contact'}>Contact us</button></aside>
+            <aside className="receipt-summary"><h2>Receipt Summary</h2><div><span>Subtotal</span><strong>RM {receipt.subtotal.toFixed(2)}</strong></div>{receipt.discount > 0 && <div><span>Discount</span><strong>− RM {(receipt.subtotal * receipt.discount).toFixed(2)}</strong></div>}<div><span>Shipping</span><strong>Complimentary</strong></div><footer><span>Total</span><strong>RM {receipt.total.toFixed(2)}</strong></footer></aside>
+            <div className="receipt-paper-footer"><p>Thank you for choosing CHRISÉA.</p><div className="receipt-footer-actions"><button type="button" disabled={!receiptImageUrl} onClick={downloadReceipt}><Download size={14} /> Download receipt</button><a href="/#top"><House size={14} /> Back to home page</a></div></div>
+            {shareMessage && <div className="receipt-share-message" role="status">{shareMessage}</div>}
+          </article>
         </section> : <section className="receipt-empty section-pad"><p>No recent receipt found.</p><h2>Your next keepsake is waiting.</h2><a href="/shop">Explore the collection <ArrowRight size={14} /></a></section>}
       </main>
       <SiteFooter />

@@ -3,8 +3,8 @@
     "eyebrow": "The story of CHRISÉA",
     "title": "Jewellery for the chapters you’ll always remember.",
     "intro": "Born from a love of keepsakes, CHRISÉA brings vintage romance into the everyday through luminous pearls, meaningful motifs and thoughtfully selected details.",
-    "image": "/assets/about/about-hero.jpg",
-    "imageAlt": "Elegant woman wearing pearl jewellery"
+    "image": "https://images.unsplash.com/photo-1710753495822-3f1a0b7cfb8d?auto=format&fit=crop&w=2400&q=85",
+    "imageAlt": "Gold jewellery arranged inside a red velvet box"
   },
   "story": {
     "eyebrow": "Our beginning",
@@ -39,6 +39,6 @@
     "title": "Wear the moment. Keep the memory.",
     "buttonLabel": "Explore the collection",
     "buttonHref": "/shop",
-    "image": "/assets/about/about-cta.jpg"
+    "image": "https://images.unsplash.com/photo-1725918319267-ec6bf04c981b?auto=format&fit=crop&w=2400&q=85"
   }
 }

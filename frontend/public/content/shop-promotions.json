@@ -7,8 +7,8 @@
     "description": "Signature pieces, thoughtfully presented and ready for the moments worth celebrating.",
     "buttonLabel": "Shop gifts",
     "buttonHref": "/shop#sale-favourites",
-    "image": "/assets/hero/chrisea-collection-03.png",
-    "imageAlt": "CHRISÉA jewellery gift collection"
+    "image": "https://images.unsplash.com/photo-1578632297758-3a6c6de14be8?auto=format&fit=crop&w=2400&q=85",
+    "imageAlt": "Gold and silver rings on a red velvet jewellery box"
   },
   {
     "id": "pearl-story",
@@ -18,8 +18,8 @@
     "description": "Luminous details and romantic silhouettes designed to become part of your everyday story.",
     "buttonLabel": "Explore pearls",
     "buttonHref": "/shop?category=Bracelets#categories",
-    "image": "/assets/products/minimalist-pearl-bracelet/04-lifestyle.png",
-    "imageAlt": "Natural pearl bracelet styled in warm light"
+    "image": "https://images.unsplash.com/photo-1705684451639-c03ebdf8bd9c?auto=format&fit=crop&w=2400&q=85",
+    "imageAlt": "Gold necklace arranged on rich red velvet"
   },
   {
     "id": "evening-edit",
@@ -29,7 +29,7 @@
     "description": "Vintage-inspired rings and statement details selected for dinners, celebrations and everything after.",
     "buttonLabel": "Discover the edit",
     "buttonHref": "/shop?category=Rings#categories",
-    "image": "/assets/editorial/styled-by-you-rings.png",
-    "imageAlt": "Vintage-inspired rings in an editorial setting"
+    "image": "https://images.unsplash.com/photo-1767790692459-cdd99cec473c?auto=format&fit=crop&w=2400&q=85",
+    "imageAlt": "Diamond ring illuminated on red velvet"
   }
 ]
