@@ -102,6 +102,14 @@ const addCartItem = (product, quantity = 1) => {
 };
 
 function BrandMark({ light = false }) {
+  if (!light) {
+    return (
+      <a className="brand-mark brand-mark--logo" href="/#top" aria-label="CHRISÉA Jewelry home">
+        <img src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry" />
+      </a>
+    );
+  }
+
   return (
     <div className={`brand-mark ${light ? 'brand-mark--light' : ''}`} aria-label="CHRISÉA Jewelry">
       <span className="brand-est">EST <b>✦</b> 2026</span>
