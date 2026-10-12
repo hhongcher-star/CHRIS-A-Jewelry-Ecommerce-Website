@@ -982,5 +982,44 @@ function App() {
   );
 }
 
-const currentPath = window.location.pathname;
-createRoot(document.getElementById('root')).render(currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />);
+function SiteRouter() {
+  const [currentUrl, setCurrentUrl] = useState(() => ({ value: `${window.location.pathname}${window.location.search}${window.location.hash}` }));
+
+  useEffect(() => {
+    const syncUrl = () => setCurrentUrl({ value: `${window.location.pathname}${window.location.search}${window.location.hash}` });
+    const navigateInsideSite = (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const link = event.target.closest('a[href]');
+      if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+
+      const destination = new URL(link.href, window.location.href);
+      if (destination.origin !== window.location.origin || !['http:', 'https:'].includes(destination.protocol)) return;
+
+      event.preventDefault();
+      window.history.pushState({}, '', `${destination.pathname}${destination.search}${destination.hash}`);
+      syncUrl();
+    };
+
+    document.addEventListener('click', navigateInsideSite);
+    window.addEventListener('popstate', syncUrl);
+    return () => {
+      document.removeEventListener('click', navigateInsideSite);
+      window.removeEventListener('popstate', syncUrl);
+    };
+  }, []);
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      const hash = window.location.hash.slice(1);
+      const target = hash ? document.getElementById(decodeURIComponent(hash)) : null;
+      if (target) target.scrollIntoView();
+      else window.scrollTo({ top: 0, left: 0 });
+    });
+  }, [currentUrl]);
+
+  const currentPath = window.location.pathname;
+  return currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />;
+}
+
+createRoot(document.getElementById('root')).render(<SiteRouter />);
