@@ -18,12 +18,49 @@ import {
   X,
 } from 'lucide-react';
 import HeroSlider from './components/HeroSlider';
+import AdminApp from './components/AdminApp';
 import './styles.css';
 
 const A = '/assets/products';
 const ABOUT_CONTENT_ENDPOINT = import.meta.env.VITE_ABOUT_CONTENT_ENDPOINT || '/content/about.json';
 const SHOP_PROMOTIONS_ENDPOINT = import.meta.env.VITE_SHOP_PROMOTIONS_ENDPOINT || '/content/shop-promotions.json';
 const CONTACT_CONTENT_ENDPOINT = import.meta.env.VITE_CONTACT_CONTENT_ENDPOINT || '/content/contact.json';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const inventorySlugs = {
+  'Enamel Pendant Necklace': '925-sterling-silver-enamel-pendant-necklace',
+  'Vintage Zircon Heart Necklace': 's925-sterling-silver-vintage-zircon-heart-pendant-necklace',
+  'Minimalist Pearl Bracelet': 's925-sterling-silver-minimalist-pearl-bracelet',
+  'Natural Pearl Bracelet': 's925-sterling-silver-minimalist-pearl-bracelet',
+  'Pearl & Turquoise Bracelet': 'pearl-turquoise-gemstone-bracelet',
+  'Malachite & Pearl Bracelet': 'vintage-gold-malachite-pearl-bracelet',
+  'Statement Zircon Ring': 's925-sterling-silver-statement-zircon-ring',
+  'Gilded Bow Ring': 'gilded-bow-ring',
+  'Lapis Lazuli Vintage Ring': 's925-vintage-zircon-lapis-mother-of-pearl-ring',
+  'Four-Leaf Zircon Ring': 's925-sterling-silver-four-leaf-zircon-ring',
+  'Mother-of-Pearl Heart Earrings': 's925-vintage-natural-mother-of-pearl-heart-earrings',
+  'Zircon Button Earrings': 'zircon-button-earrings',
+  'Statement Pearl Earrings': 's925-statement-natural-pearl-earrings',
+  'Statement Heart Zircon Earrings': 's925-statement-heart-zircon-earrings'
+};
+
+function useCatalogueInventory() {
+  const [inventory, setInventory] = useState({});
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/products/inventory`)
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Inventory unavailable')))
+      .then((result) => {
+        if (!active) return;
+        setInventory(Object.fromEntries(result.data.products.map((item) => [item.slug, Number(item.stock_quantity)])));
+      })
+      .catch(() => { /* Keep the catalogue usable if the API is temporarily offline. */ });
+    return () => { active = false; };
+  }, []);
+  return inventory;
+}
+
+const getProductStock = (product, inventory) => inventory[inventorySlugs[product.name]];
 
 const primaryNavigation = {
   left: [
@@ -98,6 +135,7 @@ const writeCart = (items) => {
 };
 const addCartItem = (product, quantity = 1) => {
   const items = readCart();
+  if (product.stock === 0) return items;
   const existing = items.find((item) => item.name === product.name);
   const next = existing ? items.map((item) => item.name === product.name ? { ...item, quantity: item.quantity + quantity } : item) : [...items, { name: product.name, quantity }];
   writeCart(next);
@@ -442,7 +480,7 @@ const saleFavorites = [
   { ...shopProducts[9], discount: '20% off', salePrice: 'RM122' },
 ];
 
-function SaleFavorites() {
+function SaleFavorites({ inventory }) {
   return (
     <section className="sale-favorites section-pad" id="sale-favourites" aria-labelledby="sale-favorites-title">
       <header className="sale-favorites-heading">
@@ -453,11 +491,14 @@ function SaleFavorites() {
       <div className="sale-favorites-grid">
         {saleFavorites.map((product) => {
           const productUrl = `/product/${encodeURIComponent(product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))}`;
+          const stock = getProductStock(product, inventory);
+          const soldOut = stock === 0;
           return (
-            <article className="sale-favorite-card" key={product.name}>
+            <article className={`sale-favorite-card ${soldOut ? 'is-sold-out' : ''}`} key={product.name}>
               <a href={productUrl} className="sale-favorite-image" aria-label={`View ${product.name}`}>
                 <img src={product.image} alt={product.name} />
                 <span>{product.discount}</span>
+                {soldOut && <b className="sale-sold-out">Sold out</b>}
               </a>
               <p>{product.category}</p>
               <h3><a href={productUrl}>{product.name}</a></h3>
@@ -474,6 +515,7 @@ function ShopPage() {
   const requestedCategory = new URLSearchParams(window.location.search).get('category');
   const [category, setCategory] = useState(['Necklaces', 'Earrings', 'Rings', 'Bracelets'].includes(requestedCategory) ? requestedCategory : 'All');
   const [wish, setWish] = useState([]);
+  const inventory = useCatalogueInventory();
   const visibleProducts = category === 'All' ? shopProducts : shopProducts.filter((product) => product.category === category);
   const toggleWish = (name) => setWish((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name]);
 
@@ -482,7 +524,7 @@ function ShopPage() {
       <Header />
       <main>
         <ShopPromotionSlider />
-        <SaleFavorites />
+        <SaleFavorites inventory={inventory} />
         <section className="shop-catalog section-pad" id="categories" aria-label="All jewellery">
           <header className="shop-catalog-heading"><p>Shop by category</p><h2>Find your signature piece</h2></header>
           <div className="shop-toolbar">
@@ -496,15 +538,18 @@ function ShopPage() {
           <div className="shop-grid">
             {visibleProducts.map((product) => {
               const productUrl = `/product/${encodeURIComponent(product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))}`;
+              const stock = getProductStock(product, inventory);
+              const soldOut = stock === 0;
               return (
-              <article className="shop-card" key={product.name}>
+              <article className={`shop-card ${soldOut ? 'is-sold-out' : ''}`} key={product.name}>
                 <div className="shop-card-image">
                   <a className="shop-image-link" href={productUrl} aria-label={`View ${product.name}`}>
                     <img className="shop-image-primary" src={product.image} alt={product.name} />
                     <img className="shop-image-secondary" src={product.hoverImage} alt="" aria-hidden="true" />
                   </a>
                   <button className={`heart-button ${wish.includes(product.name) ? 'active' : ''}`} onClick={() => toggleWish(product.name)} aria-label={`Save ${product.name}`}><Heart /></button>
-                  <button className="quick-add" onClick={() => addCartItem(product)}>Quick add</button>
+                  {soldOut && <span className="sold-out-badge">Sold out</span>}
+                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Quick add'}</button>
                 </div>
                 <div className="shop-card-copy">
                   <p>{product.category}</p>
@@ -512,6 +557,7 @@ function ShopPage() {
                   <span>{product.detail}</span>
                   <div className="shop-card-actions">
                     <strong>{product.price}</strong>
+                    {typeof stock === 'number' && !soldOut && <small className={stock <= 3 ? 'low-stock-note' : 'stock-note'}>{stock <= 3 ? `Only ${stock} left` : 'In stock'}</small>}
                     <a className="view-product-button" href={productUrl} aria-label={`View ${product.name}`}>View product <span aria-hidden="true">→</span></a>
                   </div>
                 </div>
@@ -532,6 +578,9 @@ function ProductPage() {
   const images = [product.image, product.hoverImage];
   const [selectedImage, setSelectedImage] = useState(images[0]);
   const [quantity, setQuantity] = useState(1);
+  const inventory = useCatalogueInventory();
+  const stock = getProductStock(product, inventory);
+  const soldOut = stock === 0;
 
   return (
     <div className="page-shell product-page">
@@ -551,16 +600,17 @@ function ProductPage() {
             <p className="product-type">{product.category}</p>
             <h1>{product.name}</h1>
             <p className="product-price">{product.price}</p>
+            {typeof stock === 'number' && <p className={`product-stock-status ${soldOut ? 'sold-out' : stock <= 3 ? 'low' : ''}`}>{soldOut ? 'Sold out' : stock <= 3 ? `Low stock — only ${stock} left` : `In stock — ${stock} available`}</p>}
             <div className="product-divider" />
             <p className="product-summary">A refined CHRISÉA piece created with vintage-inspired detail and an elegant finish—designed to become part of your everyday story.</p>
             <div className="product-material"><span>Material</span><strong>{product.detail}</strong></div>
             <div className="product-purchase-panel">
               <p className="quantity-label">Quantity</p>
               <div className="product-buy-row">
-                <div className="quantity-control" aria-label="Quantity"><button onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button><span>{quantity}</span><button onClick={() => setQuantity((value) => value + 1)}>+</button></div>
-                <button className="product-add" onClick={() => addCartItem(product, quantity)}>Add to cart <span>— {product.price}</span></button>
+                <div className="quantity-control" aria-label="Quantity"><button disabled={soldOut} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button><span>{quantity}</span><button disabled={soldOut} onClick={() => setQuantity((value) => Math.min(typeof stock === 'number' ? stock : value + 1, value + 1))}>+</button></div>
+                <button className="product-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock }, quantity)}>{soldOut ? 'Sold out' : 'Add to cart'} {!soldOut && <span>— {product.price}</span>}</button>
               </div>
-              <button className="product-buy-now" onClick={() => { addCartItem(product, quantity); window.location.href = '/cart'; }}>Buy it now <ArrowRight /></button>
+              <button className="product-buy-now" disabled={soldOut} onClick={() => { addCartItem({ ...product, stock }, quantity); window.location.href = '/cart'; }}>{soldOut ? 'Currently unavailable' : 'Buy it now'} {!soldOut && <ArrowRight />}</button>
             </div>
           </div>
         </section>
@@ -876,6 +926,7 @@ function ReceiptPage() {
 
 function App() {
   const [wish, setWish] = useState([]);
+  const inventory = useCatalogueInventory();
   const toggleWish = (name) => setWish((items) => items.includes(name) ? items.filter((x) => x !== name) : [...items, name]);
 
   return (
@@ -903,16 +954,17 @@ function App() {
             <a className="button button-dark" href="/shop">View all <ArrowRight size={15} /></a>
           </div>
           <div className="product-track" id="products">
-            {products.map((product) => (
-              <article className="product-card" key={product.name}>
+            {products.map((product) => { const stock = getProductStock(product, inventory); const soldOut = stock === 0; return (
+              <article className={`product-card ${soldOut ? 'is-sold-out' : ''}`} key={product.name}>
                 <div className="product-image">
                   <img src={product.image} alt={product.name} />
                   <button className={`heart-button ${wish.includes(product.name) ? 'active' : ''}`} onClick={() => toggleWish(product.name)} aria-label={`Save ${product.name}`}><Heart /></button>
-                  <button className="quick-add" onClick={() => addCartItem(product)}>Quick add</button>
+                  {soldOut && <span className="sold-out-badge">Sold out</span>}
+                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Quick add'}</button>
                 </div>
-                <div className="product-copy"><h3>{product.name}</h3><p>{product.detail}</p><strong>{product.price}</strong></div>
+                <div className="product-copy"><h3>{product.name}</h3><p>{product.detail}</p><strong>{product.price}</strong>{typeof stock === 'number' && <small className={soldOut ? 'sold-out-note' : stock <= 3 ? 'low-stock-note' : 'stock-note'}>{soldOut ? 'Sold out' : stock <= 3 ? `Only ${stock} left` : 'In stock'}</small>}</div>
               </article>
-            ))}
+            ); })}
           </div>
         </section>
 
@@ -1019,7 +1071,27 @@ function SiteRouter() {
   }, [currentUrl]);
 
   const currentPath = window.location.pathname;
-  return currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />;
+  return currentPath.startsWith('/admin') ? <AdminApp /> : currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />;
 }
 
-createRoot(document.getElementById('root')).render(<SiteRouter />);
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('CHRISÉA page error', error);
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <main className="site-error-screen"><img src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry" /><p>Something interrupted the page.</p><h1>Let’s reopen the atelier.</h1><div><button onClick={() => window.location.reload()}>Try again</button><a href="/">Return to boutique</a></div></main>;
+  }
+}
+
+createRoot(document.getElementById('root')).render(<AppErrorBoundary><SiteRouter /></AppErrorBoundary>);

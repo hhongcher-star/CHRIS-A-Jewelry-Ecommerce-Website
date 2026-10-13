@@ -73,3 +73,8 @@ Desktop.ini
 
 # TypeScript incremental build
 *.tsbuildinfo
+# Backend dependencies and environment
+backend/node_modules/
+backend/.env
+backend/uploads/
+backend/.mysql-data/

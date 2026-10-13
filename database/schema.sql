@@ -38,6 +38,16 @@ CREATE TABLE addresses (
   CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE auth_sessions (
+  id CHAR(36) PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  refresh_token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  revoked_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_auth_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE categories (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -269,6 +279,7 @@ CREATE TABLE blog_posts (
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_products_category_status ON products(category_id, status);
+CREATE INDEX idx_auth_sessions_user_expiry ON auth_sessions(user_id, expires_at);
 CREATE INDEX idx_variants_product_active ON product_variants(product_id, is_active);
 CREATE INDEX idx_orders_user_created ON orders(user_id, created_at);
 CREATE INDEX idx_orders_status_created ON orders(status, created_at);

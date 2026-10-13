@@ -15,6 +15,13 @@
   background: var(--ivory);
   font-synthesis: none;
 }
+.site-error-screen { min-height: 100vh; padding: 40px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #430411; background: #fbf7ef; text-align: center; }
+.site-error-screen img { width: 160px; height: 160px; object-fit: contain; }
+.site-error-screen p { margin: 16px 0 8px; font: 600 9px 'Montserrat', sans-serif; letter-spacing: .2em; text-transform: uppercase; }
+.site-error-screen h1 { margin: 0; font: 500 clamp(38px, 5vw, 58px) 'Cormorant Garamond', serif; }
+.site-error-screen > div { margin-top: 25px; display: flex; gap: 10px; }
+.site-error-screen button, .site-error-screen a { min-width: 145px; height: 46px; border: 1px solid #430411; display: inline-flex; align-items: center; justify-content: center; color: #430411; background: transparent; cursor: pointer; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.site-error-screen button { color: #f8f3e9; background: #430411; }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -147,6 +154,14 @@ img { display: block; width: 100%; }
 .heart-button.active svg { fill: var(--burgundy); color: var(--burgundy); }
 .quick-add { position: absolute; left: 14px; right: 14px; bottom: 14px; height: 40px; border: 0; background: rgba(67,4,17,.94); color: var(--ivory); text-transform: uppercase; letter-spacing: .16em; font-size: 9px; opacity: 0; transform: translateY(8px); transition: .25s; cursor: pointer; }
 .product-card:hover .quick-add { opacity: 1; transform: translateY(0); }
+.sold-out-badge { min-height: 0 !important; padding: 8px 12px; position: absolute; left: 12px; top: 12px; z-index: 2; color: var(--ivory) !important; background: var(--burgundy); font: 600 8px 'Montserrat', sans-serif !important; letter-spacing: .16em; text-transform: uppercase; }
+.sale-sold-out { padding: 8px 11px; position: absolute; left: 10px; bottom: 10px; z-index: 2; color: var(--ivory); background: var(--burgundy); font: 600 8px 'Montserrat', sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.is-sold-out .product-image > img, .is-sold-out .shop-card-image img { filter: grayscale(.25); opacity: .65; }
+.quick-add:disabled { opacity: 1; transform: none; cursor: not-allowed; background: rgba(67,4,17,.72); }
+.stock-note, .low-stock-note, .sold-out-note { display: block; margin-top: 9px; font: 600 8px 'Montserrat', sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.stock-note { color: #536c4e; }
+.low-stock-note { color: #a36b27; }
+.sold-out-note { color: #a1243b; }
 .product-copy { padding: 17px; }
 .product-copy h3 { margin: 0 0 6px; font: 600 16px 'Cormorant Garamond', serif; }
 .product-copy p { min-height: 28px; margin: 0 0 10px; color: var(--muted); font-size: 9px; line-height: 1.45; }
@@ -438,6 +453,12 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
 .product-buy-now { width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 12px; border-color: rgba(67,4,17,.28); background: transparent; color: var(--burgundy); }
 .product-buy-now:hover { background: var(--burgundy); color: var(--ivory); }
 .product-buy-now svg { width: 14px; stroke-width: 1.4; }
+.product-stock-status { margin: 9px 0 0; color: #536c4e; font: 600 9px 'Montserrat', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.product-stock-status.low { color: #a36b27; }
+.product-stock-status.sold-out { color: #a1243b; }
+.product-add:disabled, .product-buy-now:disabled, .quantity-control button:disabled { cursor: not-allowed; opacity: .55; }
+.product-add:disabled { background: #8b6f73; border-color: #8b6f73; }
+.product-buy-now:disabled:hover { color: var(--burgundy); background: transparent; }
 .product-benefits { margin: 28px 0 18px; padding: 22px 0; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .product-benefits span { padding: 0 12px; display: flex; align-items: center; gap: 9px; color: #430411; font: 13px/1.25 'Cormorant Garamond', serif; border-right: 1px solid var(--line); }
 .product-benefits span:first-child { padding-left: 0; }
