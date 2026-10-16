@@ -754,7 +754,7 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
   }));
 
   return <div className="admin-content-image-field">
-    {image && <div className="admin-content-image-preview"><img src={image} alt="" style={{ objectFit: fit, objectPosition: `${x}% ${y}%`, transform: `scale(${zoom / 100})`, transformOrigin: `${x}% ${y}%` }} /></div>}
+    {image && <div className={`admin-content-image-preview ${device === 'mobile' ? 'is-mobile' : 'is-desktop'}`}><img src={image} alt="" style={{ objectFit: fit, objectPosition: `${x}% ${y}%`, transform: `scale(${zoom / 100})`, transformOrigin: `${x}% ${y}%` }} /></div>}
     <div className="admin-image-adjustments">
       <p className="admin-image-device-note">Editing <strong>{device}</strong> framing</p>
       <div className="admin-image-fit"><button className={fit === 'contain' ? 'active' : ''} type="button" onClick={() => update('fit', 'contain')}>Show full image</button><button className={fit === 'cover' ? 'active' : ''} type="button" onClick={() => update('fit', 'cover')}>Fill & crop</button></div>
