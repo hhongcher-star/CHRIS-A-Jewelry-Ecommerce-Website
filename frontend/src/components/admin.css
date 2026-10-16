@@ -893,14 +893,15 @@
 .admin-promotion-ledger { padding: 0; }
 .admin-promotion-ledger > header { min-height: 88px; margin: 0; padding: 20px 25px; border-bottom: 1px solid rgba(67,4,17,.12); display: flex; align-items: center; justify-content: space-between; }
 .admin-promotion-ledger > header > span { color: #9c6870; font: 700 9px Arial,sans-serif; letter-spacing: .12em; text-transform: uppercase; }
-.admin-promotion-ledger article { min-height: 105px; padding: 18px 25px; display: grid; grid-template-columns: 46px 1fr 70px 132px; }
+.admin-promotion-ledger article { min-height: 105px; padding: 18px 25px; display: grid; grid-template-columns: 46px minmax(240px, 1fr) 82px auto; }
 .admin-promo-kind { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: rgba(67,4,17,.07); color: #86505c; }
 .admin-promo-kind svg { width: 16px; }
 .admin-promo-usage { text-align: center; }
 .admin-promo-usage span { display: block; }
 .admin-promo-usage strong { display: block; margin-top: 6px; font: 500 21px 'Cormorant Garamond',serif; }
 .admin-promo-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
-.admin-promo-actions button { min-width: 88px; min-height: 36px; border: 1px solid rgba(67,4,17,.2); background: transparent; color: #86505c; cursor: pointer; font: 700 8px Arial,sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.admin-promo-actions button { min-width: 88px; min-height: 36px; border: 1px solid rgba(67,4,17,.2); display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: transparent; color: #86505c; cursor: pointer; font: 700 8px Arial,sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.admin-promo-actions button svg { width: 13px; }
 .admin-promo-actions button.is-active { background: #e4efe7; color: #226946; }
 .admin-promo-actions button.delete { min-width: 36px; width: 36px; padding: 0; color: #8b1930; }
 .admin-promo-actions button.delete:hover { border-color: #8b1930; background: #f8e9eb; }

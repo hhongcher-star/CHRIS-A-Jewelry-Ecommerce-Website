@@ -56,7 +56,9 @@ const promotionSchema = z.object({
   startsAt: z.string().min(1),
   endsAt: z.string().min(1),
   applyAutomatically: z.boolean().default(false),
-  firstOrderOnly: z.boolean().default(false)
+  firstOrderOnly: z.boolean().default(false),
+  usageLimit: z.preprocess((value) => value === '' || value === null || value === undefined ? null : value, z.coerce.number().int().positive().max(1000000).nullable()).default(null),
+  isActive: z.boolean().default(true)
 });
 
 async function adjustOrderInventory(connection, orderId, direction, reason, reference, userId) {
@@ -569,7 +571,7 @@ export async function permanentlyDeleteProduct(req, res) {
 }
 
 export async function listPromotions(_req, res) {
-  const [rows] = await pool.query('SELECT id, code, name, discount_value, minimum_spend, starts_at, ends_at, is_active, apply_automatically, first_order_only, usage_count FROM promotions ORDER BY created_at DESC');
+  const [rows] = await pool.query('SELECT id, code, name, discount_value, minimum_spend, starts_at, ends_at, is_active, apply_automatically, first_order_only, usage_limit, usage_count FROM promotions ORDER BY created_at DESC');
   res.json({ success: true, data: { promotions: rows } });
 }
 
@@ -581,8 +583,27 @@ export async function createPromotion(req, res) {
   const code = promotion.applyAutomatically ? `AUTO-${Date.now()}` : promotion.code.toUpperCase();
   if (!promotion.applyAutomatically && !code) throw new AppError(400, 'PROMO_CODE_REQUIRED', 'Enter a promo code.');
   try {
-    const [result] = await pool.query(`INSERT INTO promotions (code, name, discount_type, discount_value, minimum_spend, starts_at, ends_at, is_active, apply_automatically, first_order_only) VALUES (?, ?, 'percentage', ?, ?, ?, ?, TRUE, ?, ?)`, [code, promotion.name, promotion.discountValue, promotion.minimumSpend, new Date(promotion.startsAt), new Date(promotion.endsAt), promotion.applyAutomatically, promotion.firstOrderOnly]);
+    const [result] = await pool.query(`INSERT INTO promotions (code, name, discount_type, discount_value, minimum_spend, starts_at, ends_at, is_active, apply_automatically, first_order_only, usage_limit) VALUES (?, ?, 'percentage', ?, ?, ?, ?, ?, ?, ?, ?)`, [code, promotion.name, promotion.discountValue, promotion.minimumSpend, new Date(promotion.startsAt), new Date(promotion.endsAt), promotion.isActive, promotion.applyAutomatically, promotion.firstOrderOnly, promotion.usageLimit]);
     res.status(201).json({ success: true, data: { id: result.insertId } });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') throw new AppError(409, 'DUPLICATE_PROMO_CODE', 'This promo code already exists.');
+    throw error;
+  }
+}
+
+export async function updatePromotion(req, res) {
+  const promotionId = Number(req.params.id);
+  if (!Number.isInteger(promotionId) || promotionId < 1) throw new AppError(400, 'INVALID_PROMOTION_ID', 'The promotion ID is invalid.');
+  const parsed = promotionSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(400, 'INVALID_PROMOTION', 'Please check the promotion details.', parsed.error.flatten().fieldErrors);
+  const promotion = parsed.data;
+  if (new Date(promotion.endsAt) <= new Date(promotion.startsAt)) throw new AppError(400, 'INVALID_PROMOTION_DATES', 'The end date must be after the start date.');
+  const code = promotion.applyAutomatically ? String(req.body.code || `AUTO-${promotionId}`).toUpperCase() : promotion.code.toUpperCase();
+  if (!promotion.applyAutomatically && !code) throw new AppError(400, 'PROMO_CODE_REQUIRED', 'Enter a promo code.');
+  try {
+    const [result] = await pool.query(`UPDATE promotions SET code = ?, name = ?, discount_value = ?, minimum_spend = ?, starts_at = ?, ends_at = ?, is_active = ?, apply_automatically = ?, first_order_only = ?, usage_limit = ? WHERE id = ?`, [code, promotion.name, promotion.discountValue, promotion.minimumSpend, new Date(promotion.startsAt), new Date(promotion.endsAt), promotion.isActive, promotion.applyAutomatically, promotion.firstOrderOnly, promotion.usageLimit, promotionId]);
+    if (!result.affectedRows) throw new AppError(404, 'PROMOTION_NOT_FOUND', 'This promotion could not be found.');
+    res.json({ success: true, data: { updated: true } });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') throw new AppError(409, 'DUPLICATE_PROMO_CODE', 'This promo code already exists.');
     throw error;

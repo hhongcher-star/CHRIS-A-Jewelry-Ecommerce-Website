@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { adjustProductStock, createCategory, createProduct, createPromotion, dashboard, deleteCategory, deleteOrder, deleteProduct, deletePromotion, getOrder, getProduct, listCategories, listDeletedOrders, listDeletedProducts, listOrders, listProducts, listPromotions, permanentlyDeleteOrder, permanentlyDeleteProduct, restoreOrder, restoreProduct, togglePromotion, updateOrderStatus, updateProduct, uploadProductImage } from '../controllers/admin.controller.js';
+import { adjustProductStock, createCategory, createProduct, createPromotion, dashboard, deleteCategory, deleteOrder, deleteProduct, deletePromotion, getOrder, getProduct, listCategories, listDeletedOrders, listDeletedProducts, listOrders, listProducts, listPromotions, permanentlyDeleteOrder, permanentlyDeleteProduct, restoreOrder, restoreProduct, togglePromotion, updateOrderStatus, updateProduct, updatePromotion, uploadProductImage } from '../controllers/admin.controller.js';
 import { authenticate, requireRole } from '../middleware/authenticate.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { adminContent, publishContent, saveContentDraft } from '../controllers/content.controller.js';
@@ -35,6 +35,7 @@ adminRouter.patch('/orders/:id/restore', asyncHandler(restoreOrder));
 adminRouter.delete('/orders/:id/permanent', asyncHandler(permanentlyDeleteOrder));
 adminRouter.get('/promotions', asyncHandler(listPromotions));
 adminRouter.post('/promotions', asyncHandler(createPromotion));
+adminRouter.put('/promotions/:id', asyncHandler(updatePromotion));
 adminRouter.patch('/promotions/:id', asyncHandler(togglePromotion));
 adminRouter.delete('/promotions/:id', asyncHandler(deletePromotion));
 adminRouter.get('/content/:page', asyncHandler(adminContent));
