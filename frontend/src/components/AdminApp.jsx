@@ -735,7 +735,7 @@ function writeContentPath(source, path, value) {
 function ContentImageField({ content, path, device, uploading, onUpload, onChange }) {
   const image = readContentPath(content, path);
   const savedAdjustment = content._imageAdjustments?.[path] || {};
-  const adjustment = savedAdjustment[device] || savedAdjustment;
+  const adjustment = savedAdjustment[device] || (device === 'mobile' ? { zoom: 100, x: 68, y: 50, fit: 'cover' } : savedAdjustment);
   const zoom = Number(adjustment.zoom || 100);
   const x = Number(adjustment.x ?? 50);
   const y = Number(adjustment.y ?? 50);
