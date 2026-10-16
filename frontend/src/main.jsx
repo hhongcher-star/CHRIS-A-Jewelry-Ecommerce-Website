@@ -93,8 +93,10 @@ function useSiteContent(page, fallback) {
   useEffect(() => {
     if (!previewing) return undefined;
     const refresh = (event) => { if (event.key === previewKey) setContent(mergeSiteContent(fallback, readPreview() || {})); };
+    const receive = (event) => { if (event.origin === window.location.origin && event.data?.type === 'chrisea-cms-content' && event.data.page === page) setContent(mergeSiteContent(fallback, event.data.content || {})); };
     window.addEventListener('storage', refresh);
-    return () => window.removeEventListener('storage', refresh);
+    window.addEventListener('message', receive);
+    return () => { window.removeEventListener('storage', refresh); window.removeEventListener('message', receive); };
   }, [page]);
   return content;
 }

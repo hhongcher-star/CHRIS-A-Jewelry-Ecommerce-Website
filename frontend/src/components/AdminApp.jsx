@@ -738,21 +738,23 @@ function ContentImageField({ content, path, uploading, onUpload, onChange }) {
   const zoom = Number(adjustment.zoom || 100);
   const x = Number(adjustment.x ?? 50);
   const y = Number(adjustment.y ?? 50);
+  const fit = adjustment.fit || 'contain';
   const update = (key, value) => onChange((current) => ({
     ...current,
     _imageAdjustments: {
       ...(current._imageAdjustments || {}),
-      [path]: { ...(current._imageAdjustments?.[path] || {}), [key]: Number(value) }
+      [path]: { ...(current._imageAdjustments?.[path] || {}), [key]: key === 'fit' ? value : Number(value) }
     }
   }));
 
   return <div className="admin-content-image-field">
-    {image && <div className="admin-content-image-preview"><img src={image} alt="" style={{ objectPosition: `${x}% ${y}%`, transform: `scale(${zoom / 100})`, transformOrigin: `${x}% ${y}%` }} /></div>}
+    {image && <div className="admin-content-image-preview"><img src={image} alt="" style={{ objectFit: fit, objectPosition: `${x}% ${y}%`, transform: `scale(${zoom / 100})`, transformOrigin: `${x}% ${y}%` }} /></div>}
     <div className="admin-image-adjustments">
+      <div className="admin-image-fit"><button className={fit === 'contain' ? 'active' : ''} type="button" onClick={() => update('fit', 'contain')}>Show full image</button><button className={fit === 'cover' ? 'active' : ''} type="button" onClick={() => update('fit', 'cover')}>Fill & crop</button></div>
       <label><span>Zoom <b>{zoom}%</b></span><input type="range" min="50" max="250" step="5" value={zoom} onChange={(event) => update('zoom', event.target.value)} /></label>
       <label><span>Horizontal <b>{x}%</b></span><input type="range" min="0" max="100" value={x} onChange={(event) => update('x', event.target.value)} /></label>
       <label><span>Vertical <b>{y}%</b></span><input type="range" min="0" max="100" value={y} onChange={(event) => update('y', event.target.value)} /></label>
-      <button type="button" onClick={() => onChange((current) => ({ ...current, _imageAdjustments: { ...(current._imageAdjustments || {}), [path]: { zoom: 100, x: 50, y: 50 } } }))}><RotateCcw /> Reset position</button>
+      <button type="button" onClick={() => onChange((current) => ({ ...current, _imageAdjustments: { ...(current._imageAdjustments || {}), [path]: { zoom: 100, x: 50, y: 50, fit: 'contain' } } }))}><RotateCcw /> Reset position</button>
     </div>
     <label><ImagePlus /> {uploading === path ? 'Uploading…' : 'Replace image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading === path} onChange={onUpload(path)} /></label>
   </div>;
@@ -827,6 +829,7 @@ function WebsiteContent({ onStartGuide }) {
   }, [page, section]);
   useEffect(() => {
     window.localStorage.setItem(`chrisea-cms-preview-${page}`, JSON.stringify(content));
+    previewRef.current?.contentWindow?.postMessage({ type: 'chrisea-cms-content', page, content }, window.location.origin);
   }, [page, content]);
 
   const save = async (publish = false) => {

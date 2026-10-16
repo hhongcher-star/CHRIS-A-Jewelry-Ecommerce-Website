@@ -1135,6 +1135,9 @@
 .admin-content-image-preview { width: 180px; height: 120px; overflow: hidden; background: #eee4d9; }
 .admin-content-image-preview img { width: 100%; height: 100%; object-fit: cover; transition: transform .18s ease, object-position .18s ease; }
 .admin-image-adjustments { min-width: 220px; display: grid; gap: 9px; flex: 1; }
+.admin-image-fit { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.admin-image-fit button { min-height: 34px; border: 1px solid #cdb9ad; background: #fffdf8; color: #6d1325; font: 700 9px Montserrat,sans-serif; cursor: pointer; }
+.admin-image-fit button.active { border-color: #6d1325; background: #6d1325; color: #fffaf0; }
 .admin-image-adjustments label { display: grid; gap: 5px; }
 .admin-image-adjustments label span { display: flex; justify-content: space-between; color: #6d1325; font: 600 10px Montserrat,sans-serif; }
 .admin-image-adjustments input[type="range"] { display: block; width: 100%; padding: 0; accent-color: #6d1325; }
