@@ -735,7 +735,6 @@ function writeContentPath(source, path, value) {
 function ContentImageField({ content, path, device, uploading, onUpload, onChange }) {
   const desktopImage = readContentPath(content, path);
   const mobileImage = content._mobileImages?.[path] || '';
-  const image = device === 'mobile' ? (mobileImage || desktopImage) : desktopImage;
   const savedAdjustment = content._imageAdjustments?.[path] || {};
   const adjustment = savedAdjustment[device] || (device === 'mobile' ? { zoom: 100, x: 68, y: 50, fit: 'cover' } : savedAdjustment);
   const zoom = Number(adjustment.zoom || 100);
@@ -752,9 +751,28 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
       }
     }
   }));
+  const previewStyle = (previewDevice) => {
+    const defaults = previewDevice === 'mobile' ? { zoom: 100, x: 68, y: 50, fit: 'cover' } : { zoom: 100, x: 50, y: 50, fit: 'contain' };
+    const previewAdjustment = savedAdjustment[previewDevice] || (previewDevice === 'desktop' ? savedAdjustment : {}) || defaults;
+    const previewX = Number(previewAdjustment.x ?? defaults.x);
+    const previewY = Number(previewAdjustment.y ?? defaults.y);
+    return { objectFit: previewAdjustment.fit || defaults.fit, objectPosition: `${previewX}% ${previewY}%`, transform: `scale(${Number(previewAdjustment.zoom || defaults.zoom) / 100})`, transformOrigin: `${previewX}% ${previewY}%` };
+  };
 
   return <div className="admin-content-image-field">
-    {image && <div className={`admin-content-image-preview ${device === 'mobile' ? 'is-mobile' : 'is-desktop'}`}><img src={image} alt="" style={{ objectFit: fit, objectPosition: `${x}% ${y}%`, transform: `scale(${zoom / 100})`, transformOrigin: `${x}% ${y}%` }} /></div>}
+    <div className="admin-device-image-grid">
+      <section className="admin-device-image-card">
+        <header><strong>DESKTOP IMAGE</strong><span>Landscape</span></header>
+        {desktopImage && <div className="admin-content-image-preview is-desktop"><img src={desktopImage} alt="Desktop preview" style={previewStyle('desktop')} /></div>}
+        <label><ImagePlus /> {uploading === `${path}:desktop` ? 'Uploading…' : 'Replace desktop image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'desktop')} /></label>
+      </section>
+      <section className="admin-device-image-card is-mobile-card">
+        <header><strong>MOBILE IMAGE</strong><span>Portrait</span></header>
+        {(mobileImage || desktopImage) && <div className="admin-content-image-preview is-mobile"><img src={mobileImage || desktopImage} alt="Mobile preview" style={previewStyle('mobile')} /></div>}
+        {!mobileImage && <small>Currently using the desktop image</small>}
+        <label><ImagePlus /> {uploading === `${path}:mobile` ? 'Uploading…' : mobileImage ? 'Replace mobile image' : 'Upload mobile image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'mobile')} /></label>
+      </section>
+    </div>
     <div className="admin-image-adjustments">
       <p className="admin-image-device-note">Editing <strong>{device}</strong> framing</p>
       <div className="admin-image-fit"><button className={fit === 'contain' ? 'active' : ''} type="button" onClick={() => update('fit', 'contain')}>Show full image</button><button className={fit === 'cover' ? 'active' : ''} type="button" onClick={() => update('fit', 'cover')}>Fill & crop</button></div>
@@ -763,11 +781,7 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
       <label><span>Vertical <b>{y}%</b></span><input type="range" min="0" max="100" value={y} onChange={(event) => update('y', event.target.value)} /></label>
       <button type="button" onClick={() => onChange((current) => ({ ...current, _imageAdjustments: { ...(current._imageAdjustments || {}), [path]: { ...(current._imageAdjustments?.[path] || {}), [device]: { zoom: 100, x: 50, y: 50, fit: 'contain' } } } }))}><RotateCcw /> Reset {device}</button>
     </div>
-    <div className="admin-device-image-uploads">
-      <label><ImagePlus /> {uploading === `${path}:desktop` ? 'Uploading…' : 'Replace desktop image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'desktop')} /></label>
-      <label><ImagePlus /> {uploading === `${path}:mobile` ? 'Uploading…' : mobileImage ? 'Replace mobile image (different)' : 'Use a different mobile image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'mobile')} /></label>
-    </div>
-    <small className="admin-image-help">Desktop and mobile can use two different photos. Mobile uses the desktop photo until you upload a different one.</small>
+    <small className="admin-image-help">Both previews are always shown. Use the Desktop/Mobile switch above to choose which framing controls you are editing.</small>
   </div>;
 }
 
