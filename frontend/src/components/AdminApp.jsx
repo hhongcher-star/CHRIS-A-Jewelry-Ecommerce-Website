@@ -749,7 +749,7 @@ function ContentImageField({ content, path, uploading, onUpload, onChange }) {
   return <div className="admin-content-image-field">
     {image && <div className="admin-content-image-preview"><img src={image} alt="" style={{ objectPosition: `${x}% ${y}%`, transform: `scale(${zoom / 100})`, transformOrigin: `${x}% ${y}%` }} /></div>}
     <div className="admin-image-adjustments">
-      <label><span>Zoom <b>{zoom}%</b></span><input type="range" min="100" max="250" step="5" value={zoom} onChange={(event) => update('zoom', event.target.value)} /></label>
+      <label><span>Zoom <b>{zoom}%</b></span><input type="range" min="50" max="250" step="5" value={zoom} onChange={(event) => update('zoom', event.target.value)} /></label>
       <label><span>Horizontal <b>{x}%</b></span><input type="range" min="0" max="100" value={x} onChange={(event) => update('x', event.target.value)} /></label>
       <label><span>Vertical <b>{y}%</b></span><input type="range" min="0" max="100" value={y} onChange={(event) => update('y', event.target.value)} /></label>
       <button type="button" onClick={() => onChange((current) => ({ ...current, _imageAdjustments: { ...(current._imageAdjustments || {}), [path]: { zoom: 100, x: 50, y: 50 } } }))}><RotateCcw /> Reset position</button>
