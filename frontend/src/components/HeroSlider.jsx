@@ -39,8 +39,8 @@ export const heroSlides = [
   },
 ];
 
-export default function HeroSlider({ content }) {
-  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image }; }) : heroSlides;
+export default function HeroSlider({ content, imageAdjustments = {} }) {
+  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; const adjustment = imageAdjustments[`hero.${index}.image`] || {}; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image, zoom: Number(adjustment.zoom || 100), position: `${Number(adjustment.x ?? 50)}% ${Number(adjustment.y ?? 50)}%`, mobilePosition: `${Number(adjustment.x ?? 50)}% ${Number(adjustment.y ?? 50)}%` }; }) : heroSlides;
   const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
   const [activeSlide, setActiveSlide] = useState(0);
   const [cycle, setCycle] = useState(0);
@@ -115,7 +115,7 @@ export default function HeroSlider({ content }) {
             <img
               src={slide.image}
               alt=""
-              style={{ '--desktop-position': slide.position, '--mobile-position': slide.mobilePosition }}
+              style={{ '--desktop-position': slide.position, '--mobile-position': slide.mobilePosition, '--image-zoom': (slide.zoom || 100) / 100 }}
             />
           </div>
         ))}

@@ -1283,7 +1283,7 @@ function App() {
       <Header />
 
       <main>
-        <HeroSlider content={home.hero} />
+        <HeroSlider content={home.hero} imageAdjustments={home._imageAdjustments} />
 
         <section className="category-grid section-pad" id="categories" aria-label="Shop by category">
           {homepageCategories.map((category) => (
