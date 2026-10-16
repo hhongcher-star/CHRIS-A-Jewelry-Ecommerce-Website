@@ -66,12 +66,17 @@ CREATE TABLE products (
   slug VARCHAR(200) NOT NULL UNIQUE,
   short_description VARCHAR(500) NULL,
   description TEXT NULL,
+  material VARCHAR(255) NULL,
+  color VARCHAR(150) NULL,
+  size VARCHAR(255) NULL,
   base_price DECIMAL(12,2) NOT NULL,
+  discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
   status ENUM('draft', 'active', 'archived') NOT NULL DEFAULT 'draft',
   featured BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT chk_products_price CHECK (base_price >= 0),
+  CONSTRAINT chk_products_discount CHECK (discount_percent >= 0 AND discount_percent <= 100),
   CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id)
 ) ENGINE=InnoDB;
 
@@ -155,6 +160,8 @@ CREATE TABLE promotions (
   starts_at DATETIME NOT NULL,
   ends_at DATETIME NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  apply_automatically BOOLEAN NOT NULL DEFAULT FALSE,
+  first_order_only BOOLEAN NOT NULL DEFAULT FALSE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT chk_promotion_value CHECK (discount_value >= 0),
@@ -195,6 +202,7 @@ CREATE TABLE orders (
   placed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
   CONSTRAINT chk_order_totals CHECK (
     subtotal >= 0 AND discount_total >= 0 AND shipping_total >= 0 AND grand_total >= 0
   ),
@@ -284,6 +292,18 @@ CREATE INDEX idx_variants_product_active ON product_variants(product_id, is_acti
 CREATE INDEX idx_orders_user_created ON orders(user_id, created_at);
 CREATE INDEX idx_orders_status_created ON orders(status, created_at);
 CREATE INDEX idx_payment_proofs_order_status ON payment_proofs(order_id, status);
+
+CREATE TABLE IF NOT EXISTS site_content (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  page_key VARCHAR(40) NOT NULL UNIQUE,
+  draft_content LONGTEXT NULL,
+  published_content LONGTEXT NULL,
+  published_at DATETIME NULL,
+  updated_by BIGINT UNSIGNED NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_site_content_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
 CREATE INDEX idx_reviews_product_status ON reviews(product_id, status);
 CREATE INDEX idx_blog_status_published ON blog_posts(status, published_at);
 

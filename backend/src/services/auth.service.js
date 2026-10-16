@@ -58,7 +58,7 @@ export async function registerUser(input) {
   }
 }
 
-export async function loginUser({ email, password }) {
+async function authenticateCredentials({ email, password }) {
   const [rows] = await pool.execute('SELECT * FROM users WHERE email = ? LIMIT 1', [email]);
   const user = rows[0];
   const passwordMatches = user ? await bcrypt.compare(password, user.password_hash) : false;
@@ -69,6 +69,10 @@ export async function loginUser({ email, password }) {
     throw new AppError(403, 'ACCOUNT_DISABLED', 'This account has been disabled.');
   }
 
+  return user;
+}
+
+async function createLoginSession(user) {
   const connection = await pool.getConnection();
   try {
     const tokens = await issueSession(connection, user);
@@ -76,6 +80,19 @@ export async function loginUser({ email, password }) {
   } finally {
     connection.release();
   }
+}
+
+export async function loginUser(input) {
+  return createLoginSession(await authenticateCredentials(input));
+}
+
+export async function loginAdminUser(input) {
+  const user = await authenticateCredentials(input);
+  if (user.role !== 'admin') {
+    throw new AppError(401, 'INVALID_CREDENTIALS', 'The email or password is incorrect.');
+  }
+
+  return createLoginSession(user);
 }
 
 export async function refreshSession(refreshToken) {

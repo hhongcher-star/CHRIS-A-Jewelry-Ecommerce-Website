@@ -1,18 +1,32 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { login, logout, me, refresh, register } from '../controllers/auth.controller.js';
+import { adminLogin, login, logout, me, refresh, register } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { validate } from '../utils/validation.js';
 
 export const authRouter = Router();
 
+authRouter.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
   standardHeaders: 'draft-7',
   legacyHeaders: false
+});
+
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { success: false, error: { code: 'TOO_MANY_LOGIN_ATTEMPTS', message: 'Too many sign-in attempts. Please wait 15 minutes and try again.' } }
 });
 
 const email = z.string().trim().toLowerCase().email().max(255);
@@ -38,6 +52,7 @@ function validateBody(schema) {
 
 authRouter.post('/register', authLimiter, validateBody(registerSchema), asyncHandler(register));
 authRouter.post('/login', authLimiter, validateBody(loginSchema), asyncHandler(login));
+authRouter.post('/admin/login', adminLoginLimiter, validateBody(loginSchema), asyncHandler(adminLogin));
 authRouter.post('/refresh', authLimiter, asyncHandler(refresh));
 authRouter.post('/logout', asyncHandler(logout));
 authRouter.get('/me', authenticate, me);

@@ -21,7 +21,11 @@ const schema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  TRUST_PROXY: booleanString
+  TRUST_PROXY: booleanString,
+  CLOUDINARY_CLOUD_NAME: z.string().trim().default(''),
+  CLOUDINARY_API_KEY: z.string().trim().default(''),
+  CLOUDINARY_API_SECRET: z.string().trim().default(''),
+  CLOUDINARY_FOLDER: z.string().trim().min(1).default('chrisea')
 });
 
 const result = schema.safeParse(process.env);
@@ -34,7 +38,7 @@ if (!result.success) {
 }
 
 if (result.data.NODE_ENV === 'production') {
-  const missing = ['DB_USER', 'DB_PASSWORD', 'JWT_SECRET'].filter(
+  const missing = ['DB_USER', 'DB_PASSWORD', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'].filter(
     (key) => !result.data[key]
   );
   if (missing.length > 0) {

@@ -6,8 +6,11 @@ if (env.NODE_ENV === 'production') {
   throw new Error('The local admin seed cannot run in production');
 }
 
-const email = process.env.ADMIN_EMAIL || 'admin@chrisea.local';
-const password = process.env.ADMIN_PASSWORD || 'AdminTest123!';
+const email = process.env.ADMIN_EMAIL;
+const password = process.env.ADMIN_PASSWORD;
+if (!email || !password || password.length < 12) {
+  throw new Error('ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters are required');
+}
 const passwordHash = await bcrypt.hash(password, env.BCRYPT_ROUNDS);
 
 try {

@@ -15,7 +15,11 @@
     "admin:seed": "node src/scripts/seed-admin.js",
     "db:migrate": "node src/scripts/database.js migrate",
     "db:seed": "node src/scripts/database.js seed",
-    "db:stock": "node src/scripts/database.js stock"
+    "db:stock": "node src/scripts/database.js stock",
+    "db:details": "node src/scripts/database.js details",
+    "db:content": "node src/scripts/database.js content",
+    "db:discounts": "node src/scripts/database.js discounts",
+    "db:promo-rules": "node src/scripts/database.js promo-rules"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

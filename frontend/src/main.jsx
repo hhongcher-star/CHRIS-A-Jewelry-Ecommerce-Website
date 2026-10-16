@@ -18,14 +18,86 @@ import {
   X,
 } from 'lucide-react';
 import HeroSlider from './components/HeroSlider';
-import AdminApp from './components/AdminApp';
 import './styles.css';
+
+const AdminApp = React.lazy(() => import('./components/AdminApp'));
 
 const A = '/assets/products';
 const ABOUT_CONTENT_ENDPOINT = import.meta.env.VITE_ABOUT_CONTENT_ENDPOINT || '/content/about.json';
 const SHOP_PROMOTIONS_ENDPOINT = import.meta.env.VITE_SHOP_PROMOTIONS_ENDPOINT || '/content/shop-promotions.json';
 const CONTACT_CONTENT_ENDPOINT = import.meta.env.VITE_CONTACT_CONTENT_ENDPOINT || '/content/contact.json';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const DEPLOYMENT_SITE_URL = 'https://mediumvioletred-stingray-627422.hostingersite.com';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${DEPLOYMENT_SITE_URL}/api` : 'http://localhost:5000/api');
+const ADMIN_ENTRY_PATH = `/${String(import.meta.env.VITE_ADMIN_PATH || 'atelier-9q7m2x4k8v6p').replace(/^\/+|\/+$/g, '')}`;
+const SITE_URL = String(import.meta.env.VITE_SITE_URL || (import.meta.env.PROD ? DEPLOYMENT_SITE_URL : window.location.origin)).replace(/\/+$/, '');
+const DEFAULT_SHARE_IMAGE = `${SITE_URL}/assets/hero/chrisea-jewelry-heart-hero.png`;
+
+function setMeta(selector, attributes) {
+  let element = document.head.querySelector(selector);
+  if (!element) {
+    element = document.createElement('meta');
+    document.head.appendChild(element);
+  }
+  Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+}
+
+function applySeo({ title, description, path, image = DEFAULT_SHARE_IMAGE, type = 'website', robots = 'index, follow, max-image-preview:large' }) {
+  const canonicalUrl = `${SITE_URL}${path === '/' ? '/' : path}`;
+  document.title = title;
+  setMeta('meta[name="description"]', { name: 'description', content: description });
+  setMeta('meta[name="robots"]', { name: 'robots', content: robots });
+  setMeta('meta[property="og:title"]', { property: 'og:title', content: title });
+  setMeta('meta[property="og:description"]', { property: 'og:description', content: description });
+  setMeta('meta[property="og:type"]', { property: 'og:type', content: type });
+  setMeta('meta[property="og:url"]', { property: 'og:url', content: canonicalUrl });
+  setMeta('meta[property="og:image"]', { property: 'og:image', content: image.startsWith('http') ? image : `${SITE_URL}${image}` });
+  setMeta('meta[name="twitter:title"]', { name: 'twitter:title', content: title });
+  setMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: description });
+  setMeta('meta[name="twitter:image"]', { name: 'twitter:image', content: image.startsWith('http') ? image : `${SITE_URL}${image}` });
+  let canonical = document.head.querySelector('link[rel="canonical"]');
+  if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); }
+  canonical.href = canonicalUrl;
+}
+
+function setJsonLd(id, value) {
+  let script = document.getElementById(id);
+  if (!script) { script = document.createElement('script'); script.id = id; script.type = 'application/ld+json'; document.head.appendChild(script); }
+  script.textContent = JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+function mergeSiteContent(fallback, saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return fallback;
+  return Object.fromEntries(Object.entries(fallback).map(([key, value]) => {
+    const incoming = saved[key];
+    if (Array.isArray(value)) return [key, Array.isArray(incoming) ? incoming : value];
+    if (value && typeof value === 'object') return [key, mergeSiteContent(value, incoming)];
+    return [key, incoming ?? value];
+  }).concat(Object.entries(saved).filter(([key]) => !(key in fallback))));
+}
+
+function useSiteContent(page, fallback) {
+  const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
+  const previewKey = `chrisea-cms-preview-${page}`;
+  const readPreview = () => {
+    if (!previewing) return null;
+    try { return JSON.parse(window.localStorage.getItem(previewKey) || 'null'); } catch { return null; }
+  };
+  const [content, setContent] = useState(() => mergeSiteContent(fallback, readPreview() || {}));
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/content/${page}`, { cache: 'no-store' }).then((response) => response.ok ? response.json() : Promise.reject()).then((result) => {
+      if (active) setContent(mergeSiteContent(fallback, previewing ? (readPreview() || result.data?.content || {}) : (result.data?.content || {})));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [page]);
+  useEffect(() => {
+    if (!previewing) return undefined;
+    const refresh = (event) => { if (event.key === previewKey) setContent(mergeSiteContent(fallback, readPreview() || {})); };
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
+  }, [page]);
+  return content;
+}
 
 const inventorySlugs = {
   'Enamel Pendant Necklace': '925-sterling-silver-enamel-pendant-necklace',
@@ -60,7 +132,20 @@ function useCatalogueInventory() {
   return inventory;
 }
 
-const getProductStock = (product, inventory) => inventory[inventorySlugs[product.name]];
+function useCatalogueCategories() {
+  const [categoryNames, setCategoryNames] = useState(['Necklaces', 'Earrings', 'Rings', 'Bracelets']);
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/products/categories`)
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Categories unavailable')))
+      .then((result) => {
+        if (active && result.data.categories.length) setCategoryNames(result.data.categories.map((category) => category.name));
+      })
+      .catch(() => { /* Keep the default navigation if the API is temporarily offline. */ });
+    return () => { active = false; };
+  }, []);
+  return categoryNames;
+}
 
 const primaryNavigation = {
   left: [
@@ -75,7 +160,7 @@ const primaryNavigation = {
 
 const mobileNavigation = [...primaryNavigation.left, ...primaryNavigation.right];
 
-const categories = [
+const categoryShowcase = [
   { name: 'Necklaces', image: `${A}/enamel-coin-necklace/01-main.png` },
   { name: 'Earrings', image: `${A}/mother-of-pearl-heart-earrings/01-vintage-gold.png` },
   { name: 'Rings', image: `${A}/four-leaf-zircon-ring/03-main.png` },
@@ -125,6 +210,84 @@ const shopProducts = [
   { name: 'Statement Heart Zircon Earrings', category: 'Earrings', detail: 'S925 Sterling Silver · Cubic Zirconia', price: 'RM120', image: `${A}/statement-heart-zircon-earrings/01-vintage-gold.png`, hoverImage: `${A}/statement-heart-zircon-earrings/02-styled.png` },
 ];
 
+const productSlug = (product) => product.slug || product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const productUrl = (product) => `/product/${encodeURIComponent(productSlug(product))}`;
+const formatProductPrice = (value) => `RM ${Number(value || 0).toFixed(2)}`;
+const catalogueDetail = (description = '', labels = []) => {
+  const escaped = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  return description.match(new RegExp(`^(?:${escaped})\\s*:\\s*(.+)$`, 'im'))?.[1]?.trim() || '';
+};
+const catalogueDescription = (description = '') => description.split(/\r?\n/).filter((line) => !/^\s*(material|colou?r|size|ring size|bracelet length|chain length|type|pearl size|ring type)\s*:/i.test(line)).join('\n').trim();
+
+function normaliseCatalogueProduct(product) {
+  const fallback = shopProducts.find((item) => item.name === product.name || productSlug(item) === product.slug);
+  const imageList = (product.images || []).map((image) => image.image_url).filter(Boolean);
+  const purchaseVariant = product.purchase_variant ? { ...product.purchase_variant, price: Number(product.purchase_variant.price ?? product.base_price ?? 0), stock_quantity: Number(product.purchase_variant.stock_quantity || 0) } : null;
+  const basePrice = Number(product.base_price ?? purchaseVariant?.price ?? 0);
+  const discountPercent = Math.max(0, Math.min(100, Number(product.discount_percent) || 0));
+  const salePrice = Number((basePrice * (1 - discountPercent / 100)).toFixed(2));
+  const primaryImage = imageList[0] || fallback?.image || `${A}/enamel-coin-necklace/01-main.png`;
+  const secondaryImage = imageList[1] || imageList[0] || fallback?.hoverImage || primaryImage;
+  return {
+    ...product,
+    slug: product.slug || productSlug(product),
+    category: product.category || fallback?.category || 'Jewellery',
+    detail: product.short_description || fallback?.detail || product.description || '',
+    price: formatProductPrice(salePrice),
+    originalPrice: formatProductPrice(basePrice),
+    numericPrice: salePrice,
+    discountPercent,
+    image: primaryImage,
+    hoverImage: secondaryImage,
+    imageList: imageList.length ? imageList : [primaryImage, secondaryImage].filter((image, index, items) => items.indexOf(image) === index),
+    description: catalogueDescription(product.description || ''),
+    material: product.material || catalogueDetail(product.description, ['Material']),
+    color: product.color || catalogueDetail(product.description, ['Color', 'Colour']),
+    size: product.size || catalogueDetail(product.description, ['Size', 'Ring Size', 'Bracelet Length', 'Chain Length']),
+    purchaseVariant,
+    stock: Number(product.stock_quantity ?? purchaseVariant?.stock_quantity ?? 0),
+  };
+}
+
+let catalogueProductsCache = null;
+let catalogueProductsRequest = null;
+
+function loadCatalogueProducts() {
+  if (catalogueProductsCache) return Promise.resolve(catalogueProductsCache);
+  if (!catalogueProductsRequest) {
+    catalogueProductsRequest = fetch(`${API_URL}/products`)
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Catalogue unavailable')))
+      .then((result) => {
+        catalogueProductsCache = (result.data?.products || []).map(normaliseCatalogueProduct);
+        return catalogueProductsCache;
+      })
+      .finally(() => { catalogueProductsRequest = null; });
+  }
+  return catalogueProductsRequest;
+}
+
+function useCatalogueProducts() {
+  const [catalogueProducts, setCatalogueProducts] = useState(catalogueProductsCache || []);
+  const [loading, setLoading] = useState(!catalogueProductsCache);
+  useEffect(() => {
+    let active = true;
+    loadCatalogueProducts()
+      .then((items) => { if (active) setCatalogueProducts(items); })
+      .catch(() => {
+        if (active) setCatalogueProducts(shopProducts.map((product) => normaliseCatalogueProduct(product)));
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  return { products: catalogueProducts, loading };
+}
+
+const getProductStock = (product, inventory = {}) => {
+  if (Number.isFinite(Number(product.stock))) return Number(product.stock);
+  if (Number.isFinite(Number(product.stock_quantity))) return Number(product.stock_quantity);
+  return inventory[product.slug || inventorySlugs[product.name]];
+};
+
 const CART_KEY = 'chrisea-cart';
 const readCart = () => {
   try { return JSON.parse(window.localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
@@ -136,8 +299,11 @@ const writeCart = (items) => {
 const addCartItem = (product, quantity = 1) => {
   const items = readCart();
   if (product.stock === 0) return items;
-  const existing = items.find((item) => item.name === product.name);
-  const next = existing ? items.map((item) => item.name === product.name ? { ...item, quantity: item.quantity + quantity } : item) : [...items, { name: product.name, quantity }];
+  const selectedVariantId = product.selectedVariantId || product.purchaseVariant?.id || null;
+  const cartKey = `${productSlug(product)}:${selectedVariantId || ''}`;
+  const existing = items.find((item) => (item.key || `${item.slug || item.name}:`) === cartKey);
+  const cartItem = { key: cartKey, slug: productSlug(product), name: product.name, variantId: selectedVariantId, quantity };
+  const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: item.quantity + quantity } : item) : [...items, cartItem];
   writeCart(next);
   return next;
 };
@@ -161,9 +327,12 @@ function BrandMark({ light = false }) {
 }
 
 function Header() {
+  const announcement = useSiteContent('announcement', { messages: ['Complimentary shipping on orders over RM200', 'Gift-ready packaging'] });
+  const announcementMessages = announcement.messages?.length >= 2 ? announcement.messages.slice(0, 4) : [announcement.message1, announcement.message2].filter(Boolean);
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { products: catalogueProducts } = useCatalogueProducts();
   const [cartCount, setCartCount] = useState(() => readCart().reduce((total, item) => total + item.quantity, 0));
   useEffect(() => {
     document.body.classList.toggle('menu-open', open);
@@ -182,21 +351,14 @@ function Header() {
   }, [searchOpen]);
 
   const close = () => setOpen(false);
-  const searchResults = searchQuery.trim().length < 2 ? [] : shopProducts.filter((product) => `${product.name} ${product.category} ${product.detail}`.toLowerCase().includes(searchQuery.trim().toLowerCase())).slice(0, 6);
+  const searchResults = searchQuery.trim().length < 2 ? [] : catalogueProducts.filter((product) => `${product.name} ${product.category} ${product.detail}`.toLowerCase().includes(searchQuery.trim().toLowerCase())).slice(0, 6);
   return (
     <>
-      <div className="announcement" aria-label="Complimentary shipping on orders over RM200. Gift-ready packaging.">
+      <div className={`announcement has-${announcementMessages.length}-items`} style={{ '--announcement-count': announcementMessages.length }} aria-label={announcementMessages.join('. ')}>
         <div className="announcement-track" aria-hidden="true">
-          {[0, 1].map((group) => (
+          {Array.from({ length: 8 }, (_, group) => (
             <div className="announcement-group" key={group}>
-              <span>✦ Complimentary shipping on orders over RM200</span>
-              <i />
-              <span>Gift-ready packaging</span>
-              <i />
-              <span>✦ Complimentary shipping on orders over RM200</span>
-              <i />
-              <span>Gift-ready packaging</span>
-              <i />
+              {announcementMessages.map((message, index) => <span className="announcement-item" key={`${group}-${index}`}><b>{index % 2 === 0 ? '✦ ' : ''}{message}</b><i /></span>)}
             </div>
           ))}
         </div>
@@ -210,7 +372,7 @@ function Header() {
             {!searchQuery.trim() && <><p>Popular searches</p><div><a href="/shop?category=Necklaces#categories">Necklaces</a><a href="/shop?category=Rings#categories">Rings</a><a href="/shop?category=Bracelets#categories">Pearls</a></div></>}
             {searchQuery.trim().length === 1 && <p>Type one more letter to search.</p>}
             {searchQuery.trim().length >= 2 && !searchResults.length && <p>No pieces found. Try another word.</p>}
-            {searchResults.map((product) => { const href = `/product/${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`; return <a className="header-search-result" href={href} key={product.name}><img src={product.image} alt="" /><span><small>{product.category}</small><strong>{product.name}</strong><em>{product.price}</em></span></a>; })}
+            {searchResults.map((product) => <a className="header-search-result" href={productUrl(product)} key={product.id || product.name}><img src={product.image} alt="" /><span><small>{product.category}</small><strong>{product.name}</strong><em>{product.price}</em></span></a>)}
             <a className="header-search-all" href="/shop">View all jewellery <ArrowRight size={13} /></a>
           </div>}
         </div>
@@ -255,10 +417,18 @@ function Header() {
   );
 }
 
+const defaultFooterCare = {
+  faq: { eyebrow: 'Customer care', title: 'Frequently Asked Questions', intro: 'A few helpful answers about ordering from CHRISÉA.', sections: [['Can I change my order?', 'Please contact us as soon as possible. We will gladly help before your order has been prepared for dispatch.'], ['How should I care for my jewellery?', 'Keep each piece dry, avoid perfume and lotions, and store it separately in its pouch after wearing.'], ['Is gift packaging available?', 'Every CHRISÉA order is thoughtfully presented and ready for gifting.']] },
+  shipping: { eyebrow: 'Delivery information', title: 'Shipping & Delivery', intro: 'Your jewellery is carefully prepared and packed before beginning its journey to you.', sections: [['Malaysia delivery', 'Orders are usually prepared within 1–2 business days. Delivery typically takes 2–5 business days after dispatch.'], ['Shipping updates', 'Once your parcel is on the way, delivery details will be sent to the email address used at checkout.'], ['Packaging', 'Each order is protected in signature CHRISÉA packaging suitable for keeping or gifting.']] },
+  returns: { eyebrow: 'Customer care', title: 'Return & Refund', intro: 'We want every CHRISÉA piece to feel just right when it arrives.', sections: [['Return window', 'Eligible unworn items may be requested for return within 14 days of delivery, with original packaging included.'], ['Making a request', 'Contact our customer care team with your order details and reason for return before sending an item back.'], ['Refunds', 'Approved refunds are returned to the original payment method after the item has been received and inspected.']] },
+  contact: { eyebrow: 'We are here to help', title: 'Contact CHRISÉA', intro: 'Questions about a piece, an order or a gift? Our customer care team would be delighted to help.', sections: [['Email', 'hello@chrisea.com'], ['WhatsApp concierge', 'Available Monday to Saturday, 10:00 AM–6:00 PM MYT.'], ['Our boutique', 'CHRISÉA is an online jewellery house based in Malaysia.']] }
+};
+
 function SiteFooter() {
+  const footerContent = useSiteContent('footer', { brandText: 'Timeless pieces for modern romantics. Designed to celebrate every chapter.', socialLabel: 'Follow our journey', shopTitle: 'Shop', careTitle: 'Customer care', newsletterTitle: 'Join our journey', newsletterText: 'Be the first to know about new arrivals, exclusive offers and more.', copyright: '© 2026 CHRISÉA Jewelry. All rights reserved.', legalText: 'Privacy Policy | Terms & Conditions', care: defaultFooterCare });
   const [carePanel, setCarePanel] = useState(null);
   const [contactContent, setContactContent] = useState({ eyebrow: 'We are here to help', title: 'Contact CHRISÉA', intro: 'Questions about a piece, an order or a gift? Our customer care team would be delighted to help.', sections: [['Email', 'hello@chrisea.com'], ['WhatsApp concierge', 'Available Monday to Saturday, 10:00 AM–6:00 PM MYT.'], ['Our boutique', 'CHRISÉA is an online jewellery house based in Malaysia.']] });
-  const careContent = {
+  const legacyCareContent = {
     faq: {
       eyebrow: 'Customer care',
       title: 'Frequently Asked Questions',
@@ -304,18 +474,29 @@ function SiteFooter() {
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [carePanel]);
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('cmsPreview')) return undefined;
+    const openCarePreview = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'chrisea-cms-section' || event.data?.page !== 'footer') return;
+      if (['faq', 'shipping', 'returns', 'contact'].includes(event.data.section)) setCarePanel(event.data.section);
+      else setCarePanel(null);
+    };
+    window.addEventListener('message', openCarePreview);
+    return () => window.removeEventListener('message', openCarePreview);
+  }, []);
 
+  const careContent = footerContent.care || legacyCareContent;
   const activeCare = carePanel ? careContent[carePanel] : null;
 
   return (
     <footer id="contact">
       <div className="footer-main section-pad">
-        <div className="footer-brand"><img className="footer-logo" src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry logo" /><p>Timeless pieces for modern romantics.<br />Designed to celebrate every chapter.</p><a href="/#top"><span aria-hidden="true">◎</span> Follow our journey</a></div>
-        <div><h3>Shop</h3><a href="/shop">All products</a><a href="/shop?category=Necklaces">Necklaces</a><a href="/shop?category=Earrings">Earrings</a><a href="/shop?category=Rings">Rings</a><a href="/shop?category=Bracelets">Bracelets</a></div>
-        <div className="footer-care"><h3>Customer care</h3><button type="button" onClick={() => setCarePanel('faq')}>FAQ</button><button type="button" onClick={() => setCarePanel('shipping')}>Shipping & delivery</button><button type="button" onClick={() => setCarePanel('returns')}>Return & refund</button><button type="button" onClick={() => setCarePanel('contact')}>Contact us</button></div>
-        <div className="newsletter"><h3>Join our journey</h3><p>Be the first to know about new arrivals, exclusive offers and more.</p><form onSubmit={(e) => e.preventDefault()}><label className="sr-only" htmlFor="email">Email address</label><input id="email" type="email" placeholder="Your email address" /><button aria-label="Subscribe"><ArrowRight /></button></form></div>
+        <div className="footer-brand"><img className="footer-logo" src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry logo" /><p>{footerContent.brandText}</p><a href="/#top"><span aria-hidden="true">◎</span> {footerContent.socialLabel}</a></div>
+        <div><h3>{footerContent.shopTitle}</h3><a href="/shop">All products</a><a href="/shop?category=Necklaces">Necklaces</a><a href="/shop?category=Earrings">Earrings</a><a href="/shop?category=Rings">Rings</a><a href="/shop?category=Bracelets">Bracelets</a></div>
+        <div className="footer-care"><h3>{footerContent.careTitle}</h3><button type="button" onClick={() => setCarePanel('faq')}>FAQ</button><button type="button" onClick={() => setCarePanel('shipping')}>Shipping & delivery</button><button type="button" onClick={() => setCarePanel('returns')}>Return & refund</button><button type="button" onClick={() => setCarePanel('contact')}>Contact us</button></div>
+        <div className="newsletter"><h3>{footerContent.newsletterTitle}</h3><p>{footerContent.newsletterText}</p><form onSubmit={(e) => e.preventDefault()}><label className="sr-only" htmlFor="email">Email address</label><input id="email" type="email" placeholder="Your email address" /><button aria-label="Subscribe"><ArrowRight /></button></form></div>
       </div>
-      <div className="footer-bottom"><span>© 2026 CHRISÉA Jewelry. All rights reserved.</span><span>Privacy Policy &nbsp; | &nbsp; Terms & Conditions</span></div>
+      <div className="footer-bottom"><span>{footerContent.copyright}</span><span>{footerContent.legalText}</span></div>
       {activeCare && (
         <div className="care-modal" role="dialog" aria-modal="true" aria-labelledby="care-modal-title" onMouseDown={(event) => event.target === event.currentTarget && setCarePanel(null)}>
           <div className="care-modal-panel">
@@ -339,22 +520,21 @@ function SiteFooter() {
 const aboutFallback = {
   hero: { eyebrow: 'The story of CHRISÉA', title: 'Jewellery for the chapters you’ll always remember.', intro: 'Born from a love of keepsakes, CHRISÉA brings vintage romance into the everyday.', image: 'https://images.unsplash.com/photo-1710753495822-3f1a0b7cfb8d?auto=format&fit=crop&w=2400&q=85', imageAlt: 'Gold jewellery arranged inside a red velvet box' },
   story: { eyebrow: 'Our beginning', title: 'A little nostalgia, made for now.', paragraphs: ['CHRISÉA began with a simple belief: the jewellery we reach for most should feel as meaningful as the moments it becomes part of.'], signature: 'For every chapter, with love.', mainImage: '/assets/about/about-origin-main.jpg', detailImage: '/assets/about/about-origin-detail.jpg' },
-  valuesEyebrow: 'What guides us', valuesTitle: 'Beauty with meaning', values: [], quote: 'The best jewellery does not simply complete a look. It keeps a feeling close.',
-  journey: { eyebrow: 'Our journey', title: 'A story still unfolding', items: [] },
+  valuesEyebrow: 'What guides us', valuesTitle: 'Beauty with meaning', values: [
+    { number: '01', title: 'Thoughtfully chosen', text: 'Every detail is considered for its character, wearability and ability to feel personal.' },
+    { number: '02', title: 'Made for real life', text: 'Elegant pieces designed to move easily from everyday rituals to life’s milestones.' },
+    { number: '03', title: 'Beautifully presented', text: 'From the piece to the packaging, every order is prepared to feel like a gift.' }
+  ], quote: 'The best jewellery does not simply complete a look. It keeps a feeling close.',
+  journey: { eyebrow: 'Our journey', title: 'A story still unfolding', items: [
+    { year: '2026', title: 'CHRISÉA begins', text: 'A curated jewellery house for modern romantics is born in Malaysia.' },
+    { year: 'Today', title: 'Chosen with intention', text: 'We continue to discover pieces that balance sentiment, beauty and everyday ease.' },
+    { year: 'Always', title: 'Made part of your story', text: 'Our favourite chapter is the one each piece begins with you.' }
+  ] },
   cta: { eyebrow: 'Find your keepsake', title: 'Wear the moment. Keep the memory.', buttonLabel: 'Explore the collection', buttonHref: '/shop', image: 'https://images.unsplash.com/photo-1725918319267-ec6bf04c981b?auto=format&fit=crop&w=2400&q=85' },
 };
 
 function AboutPage() {
-  const [content, setContent] = useState(aboutFallback);
-
-  useEffect(() => {
-    let active = true;
-    fetch(ABOUT_CONTENT_ENDPOINT)
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error('About content unavailable')))
-      .then((data) => active && setContent(data))
-      .catch(() => {});
-    return () => { active = false; };
-  }, []);
+  const content = useSiteContent('about', aboutFallback);
 
   const { hero, story, values = [], journey, cta } = content;
   return (
@@ -382,7 +562,7 @@ function AboutPage() {
             <p className="eyebrow dark">{story.eyebrow}</p>
             <h2>{story.title}</h2>
             <div className="short-rule" />
-            {story.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            {(story.paragraph ? [story.paragraph] : story.paragraphs)?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
             <p className="about-signature">{story.signature}</p>
           </div>
         </section>
@@ -418,10 +598,11 @@ const promotionFallback = [
   { id: 'signature-edit', active: true, eyebrow: 'The signature edit', title: 'A little something, just for you.', description: 'Discover handpicked pieces made for gifting, keeping and every meaningful moment between.', buttonLabel: 'Shop the edit', buttonHref: '/shop#sale-favourites', image: 'https://images.unsplash.com/photo-1578632297758-3a6c6de14be8?auto=format&fit=crop&w=2400&q=85', imageAlt: 'Gold and silver rings on a red velvet jewellery box' },
 ];
 
-function ShopPromotionSlider() {
+function ShopPromotionSlider({ content }) {
   const [promotions, setPromotions] = useState(promotionFallback);
   const [active, setActive] = useState(0);
-  const visiblePromotions = promotions.filter((promotion) => promotion.active !== false);
+  const cmsPromotions = Array.isArray(content) ? content.map((promotion, index) => ({ ...promotionFallback[0], ...promotion, id: `website-content-promotion-${index + 1}` })) : [];
+  const visiblePromotions = (cmsPromotions.length ? cmsPromotions : promotions).filter((promotion) => promotion.active !== false);
 
   useEffect(() => {
     let mounted = true;
@@ -443,12 +624,13 @@ function ShopPromotionSlider() {
   }, [active, visiblePromotions.length]);
 
   if (!visiblePromotions.length) return null;
-  const current = visiblePromotions[active];
+  const safeActive = active % visiblePromotions.length;
+  const current = visiblePromotions[safeActive];
 
   return (
     <section className="shop-promotion" aria-roledescription="carousel" aria-label="Current promotions">
       <div className="shop-promotion-media">
-        {visiblePromotions.map((promotion, index) => <img className={index === active ? 'is-active' : ''} src={promotion.image} alt={index === active ? promotion.imageAlt : ''} aria-hidden={index !== active} key={promotion.id} />)}
+        {visiblePromotions.map((promotion, index) => <img className={index === safeActive ? 'is-active' : ''} src={promotion.image} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} key={promotion.id} />)}
       </div>
       <div className="shop-promotion-shade" />
       <div className="shop-promotion-copy" key={current.id}>
@@ -466,43 +648,36 @@ function ShopPromotionSlider() {
         </div>
       </div>
       <div className="shop-promotion-controls" aria-label="Choose promotion">
-        {visiblePromotions.map((promotion, index) => <button className={index === active ? 'is-active' : ''} type="button" onClick={() => setActive(index)} aria-label={`Show promotion ${index + 1}`} key={promotion.id}><span>0{index + 1}</span><i><b /></i></button>)}
+        {visiblePromotions.map((promotion, index) => <button className={index === safeActive ? 'is-active' : ''} type="button" onClick={() => setActive(index)} aria-label={`Show promotion ${index + 1}`} key={promotion.id}><span>0{index + 1}</span><i><b /></i></button>)}
       </div>
-      <div className="shop-promotion-counter">0{active + 1}<i />0{visiblePromotions.length}</div>
+      <div className="shop-promotion-counter">0{safeActive + 1}<i />0{visiblePromotions.length}</div>
     </section>
   );
 }
 
-const saleFavorites = [
-  { ...shopProducts[0], discount: '20% off', salePrice: 'RM134' },
-  { ...shopProducts[5], discount: '20% off', salePrice: 'RM96' },
-  { ...shopProducts[8], discount: '25% off', salePrice: 'RM104' },
-  { ...shopProducts[9], discount: '20% off', salePrice: 'RM122' },
-];
-
-function SaleFavorites({ inventory }) {
+function SaleFavorites({ products, content }) {
   return (
     <section className="sale-favorites section-pad" id="sale-favourites" aria-labelledby="sale-favorites-title">
       <header className="sale-favorites-heading">
         <span />
-        <div><h2 id="sale-favorites-title">Sale Favourites</h2><p>Handpicked pieces at special prices.</p></div>
+        <div><h2 id="sale-favorites-title">{content.title}</h2><p>{content.description}</p></div>
         <span />
       </header>
       <div className="sale-favorites-grid">
-        {saleFavorites.map((product) => {
-          const productUrl = `/product/${encodeURIComponent(product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))}`;
-          const stock = getProductStock(product, inventory);
+        {products.map((product) => {
+          const href = productUrl(product);
+          const stock = getProductStock(product);
           const soldOut = stock === 0;
           return (
             <article className={`sale-favorite-card ${soldOut ? 'is-sold-out' : ''}`} key={product.name}>
-              <a href={productUrl} className="sale-favorite-image" aria-label={`View ${product.name}`}>
+              <a href={href} className="sale-favorite-image" aria-label={`View ${product.name}`}>
                 <img src={product.image} alt={product.name} />
-                <span>{product.discount}</span>
+                {product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}
                 {soldOut && <b className="sale-sold-out">Sold out</b>}
               </a>
               <p>{product.category}</p>
-              <h3><a href={productUrl}>{product.name}</a></h3>
-              <div><strong>{product.salePrice}</strong><del>{product.price}</del></div>
+              <h3><a href={href}>{product.name}</a></h3>
+              <div><strong>{product.price}</strong>{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</div>
             </article>
           );
         })}
@@ -512,53 +687,76 @@ function SaleFavorites({ inventory }) {
 }
 
 function ShopPage() {
+  const shop = useSiteContent('shop', { promotion: [{ eyebrow: 'The signature edit', title: 'A little something, just for you.', description: 'Discover handpicked pieces made for gifting, keeping and every meaningful moment between.', buttonLabel: 'Shop the edit', buttonHref: '/shop#sale-favourites', image: 'https://images.unsplash.com/photo-1578632297758-3a6c6de14be8?auto=format&fit=crop&w=2400&q=85' }, { eyebrow: 'New arrivals', title: 'Made for your next chapter.', description: 'Meet the latest jewellery chosen to bring a little beauty to every day.', buttonLabel: 'Discover new pieces', buttonHref: '/shop#categories', image: '/assets/hero/chrisea-jewelry-ring-hero.png' }, { eyebrow: 'The gift edit', title: 'A meaningful gift, beautifully chosen.', description: 'Find keepsakes for celebrations, milestones and the moments in between.', buttonLabel: 'Explore gifts', buttonHref: '/shop#categories', image: '/assets/hero/chrisea-jewelry-bracelet-hero.png' }], favourites: { title: 'Our Favourites', description: 'Four pieces selected especially for you.', productIds: [] }, catalogue: { eyebrow: 'Shop by category', title: 'Find your signature piece', productOrders: { All: [] } } });
+  const favourites = shop?.favourites && typeof shop.favourites === 'object' ? shop.favourites : { title: 'Our Favourites', description: 'Four pieces selected especially for you.', productIds: [] };
+  const catalogue = shop?.catalogue && typeof shop.catalogue === 'object' ? shop.catalogue : { eyebrow: 'Shop by category', title: 'Find your signature piece', productOrders: { All: [] } };
   const requestedCategory = new URLSearchParams(window.location.search).get('category');
-  const [category, setCategory] = useState(['Necklaces', 'Earrings', 'Rings', 'Bracelets'].includes(requestedCategory) ? requestedCategory : 'All');
-  const [wish, setWish] = useState([]);
-  const inventory = useCatalogueInventory();
-  const visibleProducts = category === 'All' ? shopProducts : shopProducts.filter((product) => product.category === category);
-  const toggleWish = (name) => setWish((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name]);
+  const catalogueCategories = useCatalogueCategories();
+  const { products: catalogueProducts, loading } = useCatalogueProducts();
+  const [category, setCategory] = useState(requestedCategory || 'All');
+  const favouriteIds = (Array.isArray(favourites.productIds) ? favourites.productIds : []).map(String);
+  const selectedFavourites = favouriteIds.map((id) => catalogueProducts.find((product) => String(product.id) === id)).filter(Boolean);
+  const favouriteProducts = (selectedFavourites.length ? selectedFavourites : catalogueProducts).slice(0, 4);
+  const categoryProducts = category === 'All' ? catalogueProducts : catalogueProducts.filter((product) => product.category === category);
+  const savedCategoryOrder = catalogue.productOrders?.[category] || (category === 'All' ? catalogue.productIds : []);
+  const orderIds = (Array.isArray(savedCategoryOrder) ? savedCategoryOrder : []).map(String);
+  const visibleProducts = [...orderIds.map((id) => categoryProducts.find((product) => String(product.id) === id)).filter(Boolean), ...categoryProducts.filter((product) => !orderIds.includes(String(product.id)))];
+  const chooseCategory = (nextCategory) => {
+    setCategory(nextCategory);
+    const url = new URL(window.location.href);
+    if (nextCategory === 'All') url.searchParams.delete('category');
+    else url.searchParams.set('category', nextCategory);
+    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  };
+
+  useEffect(() => {
+    const syncCategoryFromUrl = () => setCategory(new URLSearchParams(window.location.search).get('category') || 'All');
+    window.addEventListener('popstate', syncCategoryFromUrl);
+    return () => window.removeEventListener('popstate', syncCategoryFromUrl);
+  }, []);
 
   return (
     <div className="page-shell shop-page">
       <Header />
       <main>
-        <ShopPromotionSlider />
-        <SaleFavorites inventory={inventory} />
+        <ShopPromotionSlider content={shop.promotion} />
+        <SaleFavorites products={favouriteProducts} content={favourites} />
         <section className="shop-catalog section-pad" id="categories" aria-label="All jewellery">
-          <header className="shop-catalog-heading"><p>Shop by category</p><h2>Find your signature piece</h2></header>
+          <header className="shop-catalog-heading"><p>{catalogue.eyebrow}</p><h2>{catalogue.title}</h2></header>
           <div className="shop-toolbar">
             <div className="shop-filters" aria-label="Filter products by category">
-              {['All', 'Necklaces', 'Earrings', 'Rings', 'Bracelets'].map((item) => (
-                <button className={category === item ? 'is-active' : ''} onClick={() => setCategory(item)} key={item}>{item}</button>
+              {['All', ...catalogueCategories].map((item) => (
+                <button className={category === item ? 'is-active' : ''} onClick={() => chooseCategory(item)} key={item}>{item}</button>
               ))}
             </div>
             <span>{visibleProducts.length} pieces</span>
           </div>
           <div className="shop-grid">
+            {loading && <div className="shop-catalog-message"><Sparkles /><h3>Preparing the collection…</h3></div>}
+            {!loading && !visibleProducts.length && <div className="shop-catalog-message"><Gem /><h3>No active pieces in this category yet.</h3><p>Publish a product from the administration page to show it here.</p></div>}
             {visibleProducts.map((product) => {
-              const productUrl = `/product/${encodeURIComponent(product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))}`;
-              const stock = getProductStock(product, inventory);
+              const href = productUrl(product);
+              const stock = getProductStock(product);
               const soldOut = stock === 0;
               return (
-              <article className={`shop-card ${soldOut ? 'is-sold-out' : ''}`} key={product.name}>
+              <article className={`shop-card ${soldOut ? 'is-sold-out' : ''}`} key={product.id || product.name}>
                 <div className="shop-card-image">
-                  <a className="shop-image-link" href={productUrl} aria-label={`View ${product.name}`}>
+                  <a className="shop-image-link" href={href} aria-label={`View ${product.name}`}>
                     <img className="shop-image-primary" src={product.image} alt={product.name} />
                     <img className="shop-image-secondary" src={product.hoverImage} alt="" aria-hidden="true" />
                   </a>
-                  <button className={`heart-button ${wish.includes(product.name) ? 'active' : ''}`} onClick={() => toggleWish(product.name)} aria-label={`Save ${product.name}`}><Heart /></button>
+                  {product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}
                   {soldOut && <span className="sold-out-badge">Sold out</span>}
-                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Quick add'}</button>
+                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Add to cart'}</button>
                 </div>
                 <div className="shop-card-copy">
                   <p>{product.category}</p>
-                  <h2><a href={productUrl}>{product.name}</a></h2>
+                  <h2><a href={href}>{product.name}</a></h2>
                   <span>{product.detail}</span>
                   <div className="shop-card-actions">
-                    <strong>{product.price}</strong>
+                    <strong>{product.price}</strong>{product.discountPercent > 0 && <del>{product.originalPrice}</del>}
                     {typeof stock === 'number' && !soldOut && <small className={stock <= 3 ? 'low-stock-note' : 'stock-note'}>{stock <= 3 ? `Only ${stock} left` : 'In stock'}</small>}
-                    <a className="view-product-button" href={productUrl} aria-label={`View ${product.name}`}>View product <span aria-hidden="true">→</span></a>
+                    <a className="view-product-button" href={href} aria-label={`View ${product.name}`}>View product <span aria-hidden="true">→</span></a>
                   </div>
                 </div>
               </article>
@@ -574,13 +772,77 @@ function ShopPage() {
 
 function ProductPage() {
   const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
-  const product = shopProducts.find((item) => item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') === slug) || shopProducts[0];
-  const images = [product.image, product.hoverImage];
-  const [selectedImage, setSelectedImage] = useState(images[0]);
+  const { products: catalogueProducts, loading } = useCatalogueProducts();
+  const product = catalogueProducts.find((item) => item.slug === slug);
+  const [selectedImage, setSelectedImage] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const inventory = useCatalogueInventory();
-  const stock = getProductStock(product, inventory);
+  useEffect(() => {
+    if (!product) return;
+    setSelectedImage(product.imageList[0] || product.image);
+    setQuantity(1);
+  }, [product?.id, product?.slug]);
+
+  const images = product?.imageList || [];
+  const stock = product ? getProductStock(product) : undefined;
+  const displayPrice = product?.price;
   const soldOut = stock === 0;
+  useEffect(() => {
+    if (loading) return undefined;
+    if (!product) {
+      applySeo({ title: 'Product unavailable | CHRISÉA Jewelry', description: 'This jewellery piece is not currently available.', path: `/product/${encodeURIComponent(slug)}`, robots: 'noindex, follow' });
+      return undefined;
+    }
+    const path = productUrl(product);
+    const description = (product.detail || product.description || `Discover ${product.name} from CHRISÉA Jewelry.`).replace(/\s+/g, ' ').slice(0, 160);
+    applySeo({ title: `${product.name} | CHRISÉA Jewelry`, description, path, image: product.image, type: 'product' });
+    setJsonLd('seo-product-jsonld', {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: product.name,
+      image: product.imageList.map((image) => image.startsWith('http') ? image : `${SITE_URL}${image}`),
+      description,
+      sku: product.purchaseVariant?.sku || undefined,
+      category: product.category,
+      material: product.material || undefined,
+      brand: { '@type': 'Brand', name: 'CHRISÉA' },
+      offers: {
+        '@type': 'Offer',
+        url: `${SITE_URL}${path}`,
+        priceCurrency: 'MYR',
+        price: Number(product.numericPrice || 0).toFixed(2),
+        availability: soldOut ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        itemCondition: 'https://schema.org/NewCondition'
+      }
+    });
+    setJsonLd('seo-breadcrumb-jsonld', {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${SITE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Shop', item: `${SITE_URL}/shop` },
+        { '@type': 'ListItem', position: 3, name: product.name, item: `${SITE_URL}${path}` }
+      ]
+    });
+    return () => {
+      document.getElementById('seo-product-jsonld')?.remove();
+      document.getElementById('seo-breadcrumb-jsonld')?.remove();
+    };
+  }, [loading, product, slug, soldOut]);
+
+  if (loading) {
+    return <div className="page-shell product-page"><Header /><main className="product-state section-pad"><Sparkles /><h1>Preparing your piece…</h1></main><SiteFooter /></div>;
+  }
+
+  if (!product) {
+    return <div className="page-shell product-page"><Header /><main className="product-state section-pad"><Gem /><p>Piece unavailable</p><h1>This product is not currently published.</h1><a className="button button-dark" href="/shop">Return to the collection <ArrowRight size={15} /></a></main><SiteFooter /></div>;
+  }
+
+  const cartProduct = {
+    ...product,
+    stock,
+    price: displayPrice,
+    selectedVariantId: product.purchaseVariant?.id || null,
+  };
 
   return (
     <div className="page-shell product-page">
@@ -591,26 +853,30 @@ function ProductPage() {
           <div className="product-gallery">
             <div className="product-thumbnails">
               {images.map((image, index) => (
-                <button className={selectedImage === image ? 'is-active' : ''} onClick={() => setSelectedImage(image)} key={image}><img src={image} alt={`${product.name} view ${index + 1}`} /></button>
+                <button className={selectedImage === image ? 'is-active' : ''} onClick={() => setSelectedImage(image)} key={`${image}-${index}`}><img src={image} alt={`${product.name} view ${index + 1}`} /></button>
               ))}
             </div>
-            <div className="product-main-image"><img src={selectedImage} alt={product.name} /></div>
+            <div className="product-main-image"><img src={selectedImage} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</div>
           </div>
           <div className="product-information">
             <p className="product-type">{product.category}</p>
             <h1>{product.name}</h1>
-            <p className="product-price">{product.price}</p>
+            <p className="product-price">{displayPrice}{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</p>
             {typeof stock === 'number' && <p className={`product-stock-status ${soldOut ? 'sold-out' : stock <= 3 ? 'low' : ''}`}>{soldOut ? 'Sold out' : stock <= 3 ? `Low stock — only ${stock} left` : `In stock — ${stock} available`}</p>}
             <div className="product-divider" />
-            <p className="product-summary">A refined CHRISÉA piece created with vintage-inspired detail and an elegant finish—designed to become part of your everyday story.</p>
-            <div className="product-material"><span>Material</span><strong>{product.detail}</strong></div>
+            <p className="product-summary">{product.description || product.short_description || 'A refined CHRISÉA piece designed to become part of your everyday story.'}</p>
+            <dl className="product-specifications">
+              {product.material && <div><dt>Material</dt><dd>{product.material}</dd></div>}
+              {product.color && <div><dt>Color</dt><dd>{product.color}</dd></div>}
+              {product.size && <div><dt>Size</dt><dd>{product.size}</dd></div>}
+            </dl>
             <div className="product-purchase-panel">
               <p className="quantity-label">Quantity</p>
               <div className="product-buy-row">
                 <div className="quantity-control" aria-label="Quantity"><button disabled={soldOut} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button><span>{quantity}</span><button disabled={soldOut} onClick={() => setQuantity((value) => Math.min(typeof stock === 'number' ? stock : value + 1, value + 1))}>+</button></div>
-                <button className="product-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock }, quantity)}>{soldOut ? 'Sold out' : 'Add to cart'} {!soldOut && <span>— {product.price}</span>}</button>
+                <button className="product-add" disabled={soldOut} onClick={() => addCartItem(cartProduct, quantity)}>{soldOut ? 'Sold out' : 'Add to cart'} {!soldOut && <span>— {displayPrice}</span>}</button>
               </div>
-              <button className="product-buy-now" disabled={soldOut} onClick={() => { addCartItem({ ...product, stock }, quantity); window.location.href = '/cart'; }}>{soldOut ? 'Currently unavailable' : 'Buy it now'} {!soldOut && <ArrowRight />}</button>
+              <button className="product-buy-now" disabled={soldOut} onClick={() => { addCartItem(cartProduct, quantity); window.location.href = '/cart'; }}>{soldOut ? 'Currently unavailable' : 'Buy it now'} {!soldOut && <ArrowRight />}</button>
             </div>
           </div>
         </section>
@@ -631,24 +897,20 @@ const reviewSamples = [
 
 function ReviewsPage() {
   const [rating, setRating] = useState('All');
+  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words' }, social: { eyebrow: 'Spotted on you', title: 'Styled by You', description: 'A glimpse of how our community wears CHRISÉA. Share your look and become part of the story.', image1: '/assets/reviews/review-earrings.jpg', image2: '/assets/reviews/review-styling.jpg', image3: '/assets/reviews/review-necklace.jpg' }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review' } });
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
   return (
     <div className="page-shell reviews-page">
       <Header />
       <main>
         <section className="reviews-hero">
-          <img src="https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85" alt="Gold stud earrings presented in a red jewellery box" />
+          <img src={reviewsContent.hero.image} alt="Gold stud earrings presented in a red jewellery box" />
           <div className="reviews-hero-shade" />
-          <div className="reviews-hero-copy"><p>The CHRISÉA experience</p><h1>Loved, Worn<br />&amp; Cherished.</h1><span /><p>Stories from our community—because the most meaningful pieces are the ones that become part of your story.</p></div>
-        </section>
-
-        <section className="reviews-summary section-pad" aria-label="Review summary">
-          <div className="reviews-score"><strong>4.9</strong><div><span>★★★★★</span><small>Customer experience</small></div></div>
-          <div className="reviews-trust"><div><Gem /><strong>Thoughtful feedback</strong><span>Shared by our community</span></div><div><Camera /><strong>Photos &amp; stories</strong><span>See how they style it</span></div><div><Heart /><strong>Pieces to cherish</strong><span>Made for every chapter</span></div></div>
+          <div className="reviews-hero-copy"><p>{reviewsContent.hero.eyebrow}</p><h1>{reviewsContent.hero.title}</h1><span /><p>{reviewsContent.hero.description}</p></div>
         </section>
 
         <section className="reviews-feed section-pad">
-          <div className="reviews-feed-head"><div><p>Community notes</p><h2>In their own words</h2></div><span>Sample review layout</span></div>
+          <div className="reviews-feed-head"><div><p>{reviewsContent.feed.eyebrow}</p><h2>{reviewsContent.feed.title}</h2></div><span>Sample review layout</span></div>
           <div className="reviews-toolbar" aria-label="Filter reviews">{filters.map((item) => <button className={rating === item ? 'is-active' : ''} onClick={() => setRating(item)} key={item}>{item}</button>)}</div>
           <div className="reviews-grid">
             {reviewSamples.map((review, index) => <article className="review-card" key={`${review.title}-${index}`}>
@@ -659,11 +921,11 @@ function ReviewsPage() {
         </section>
 
         <section className="reviews-social section-pad">
-          <div className="reviews-social-copy"><p>Spotted on you</p><h2>Styled by You</h2><span /><p>A glimpse of how our community wears CHRISÉA. Share your look and become part of the story.</p><a href="/#contact">Tag @chrisea.jewelry <ArrowRight size={14} /></a></div>
-          <div className="reviews-social-grid"><img src="/assets/reviews/review-earrings.jpg" alt="Gold earrings styled by the community" /><img src="/assets/reviews/review-styling.jpg" alt="Gold ring styling detail" /><img src="/assets/reviews/review-necklace.jpg" alt="Fine necklace styling detail" /></div>
+          <div className="reviews-social-copy"><p>{reviewsContent.social.eyebrow}</p><h2>{reviewsContent.social.title}</h2><span /><p>{reviewsContent.social.description}</p><a href="/#contact">Tag @chrisea.jewelry <ArrowRight size={14} /></a></div>
+          <div className="reviews-social-grid"><img src={reviewsContent.social.image1} alt="Gold earrings styled by the community" /><img src={reviewsContent.social.image2} alt="Gold ring styling detail" /><img src={reviewsContent.social.image3} alt="Fine necklace styling detail" /></div>
         </section>
 
-        <section className="reviews-cta"><div><p>Your story matters</p><h2>A Little Love Note?</h2><span>We’d love to hear about your CHRISÉA experience.</span><a href="mailto:hello@chrisea.com">Write a review <ArrowRight size={14} /></a></div></section>
+        <section className="reviews-cta"><div><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a href="mailto:hello@chrisea.com">{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a></div></section>
         <section className="reviews-service-strip section-pad"><div><Truck /><span><strong>Free shipping</strong>On orders over RM200</span></div><div><Gift /><span><strong>Beautiful packaging</strong>Designed with care</span></div><div><ShieldCheck /><span><strong>Secure payment</strong>Your information is safe</span></div><div><Heart /><span><strong>Need help?</strong>We’re here for you</span></div></section>
       </main>
       <SiteFooter />
@@ -672,66 +934,146 @@ function ReviewsPage() {
 }
 
 function CartPage() {
+  const cartContent = useSiteContent('cart', { hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' }, recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] }, benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] } });
   const [cart, setCart] = useState(() => readCart());
   const [promo, setPromo] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState(null);
   const [discount, setDiscount] = useState(0);
-  const cartItems = cart.map((item) => ({ ...shopProducts.find((product) => product.name === item.name), quantity: item.quantity })).filter((item) => item.name);
+  const [checkout, setCheckout] = useState({ fullName: '', email: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', postcode: '', paymentMethod: 'bank_transfer' });
+  const [checkoutError, setCheckoutError] = useState('');
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const { products: catalogueProducts } = useCatalogueProducts();
+  const cartItems = cart.map((item) => {
+    const product = catalogueProducts.find((candidate) => candidate.slug === item.slug || candidate.name === item.name);
+    if (!product) return null;
+    const purchaseVariant = product.purchaseVariant;
+    return {
+      ...product,
+      cartKey: item.key || `${item.slug || item.name}:`,
+      quantity: item.quantity,
+      variantId: item.variantId || purchaseVariant?.id || null,
+      price: product.price,
+      stock: product.stock,
+    };
+  }).filter(Boolean);
   const subtotal = cartItems.reduce((total, item) => total + Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity, 0);
   const total = subtotal * (1 - discount);
-  const recommendations = shopProducts.filter((product) => !cart.some((item) => item.name === product.name)).slice(0, 4);
+  const recommendationIds = (cartContent.recommendations.productIds || []).map(String);
+  const availableRecommendations = catalogueProducts.filter((product) => !cart.some((item) => item.slug === product.slug || item.name === product.name));
+  const selectedRecommendations = recommendationIds.map((id) => availableRecommendations.find((product) => String(product.id) === id)).filter(Boolean);
+  const recommendations = [...selectedRecommendations, ...availableRecommendations.filter((product) => !recommendationIds.includes(String(product.id)))].slice(0, 4);
+  const cartBenefits = cartContent.benefits.items || [];
   const syncCart = (next) => { setCart(next); writeCart(next); };
-  const updateQuantity = (name, amount) => syncCart(cart.map((item) => item.name === name ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item));
-  const removeItem = (name) => syncCart(cart.filter((item) => item.name !== name));
-  const moveToWishlist = (name) => {
-    const wishlist = JSON.parse(window.localStorage.getItem('chrisea-wishlist') || '[]');
-    window.localStorage.setItem('chrisea-wishlist', JSON.stringify([...new Set([...wishlist, name])]));
-    removeItem(name);
-  };
+  const updateQuantity = (key, amount) => syncCart(cart.map((item) => (item.key || `${item.slug || item.name}:`) === key ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item));
+  const removeItem = (key) => syncCart(cart.filter((item) => (item.key || `${item.slug || item.name}:`) !== key));
   const addRecommended = (product) => {
     const next = addCartItem(product);
     setCart(next);
   };
-  const applyPromo = () => {
-    if (promo.trim().toUpperCase() === 'CHRISEA10') { setDiscount(.1); setPromoMessage('CHRISEA10 applied — 10% off'); }
-    else { setDiscount(0); setPromoMessage('Promo code not recognised'); }
+  useEffect(() => {
+    if (!subtotal || promo.trim()) return;
+    fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: '' }) })
+      .then((response) => response.json()).then((result) => {
+        if (result.data?.valid) { setDiscount(Number(result.data.discountTotal) / subtotal); setPromoMessage(`${result.data.promotion.name} applied automatically — ${Number(result.data.promotion.discount_value)}% off`); }
+      }).catch(() => {});
+  }, [subtotal, promo]);
+  const applyPromo = async () => {
+    const code = promo.trim().toUpperCase();
+    if (!code) { setDiscount(0); setPromoMessage('Enter a promo code'); return; }
+    try {
+      const response = await fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code, email: checkout.email.trim(), phone: checkout.phone.trim() }) });
+      const result = await response.json();
+      if (!result.data?.valid) {
+        setDiscount(0);
+        setPromoMessage(result.data?.reason === 'FIRST_ORDER_ONLY' ? 'This promo code is for first-time buyers only' : result.data?.reason === 'FIRST_ORDER_DETAILS_REQUIRED' ? 'Enter your email or phone number first to verify this first-order offer' : 'Promo code is invalid, expired, or does not meet the minimum spend');
+        return;
+      }
+      setDiscount(Number(result.data.discountTotal) / Math.max(subtotal, 1));
+      setPromoMessage(`${code} applied — ${Number(result.data.promotion.discount_value)}% off`);
+      setPromoSuccess({
+        code,
+        name: result.data.promotion.name,
+        percentage: Number(result.data.promotion.discount_value),
+        saving: Number(result.data.discountTotal),
+      });
+    } catch { setDiscount(0); setPromoMessage('Unable to validate this promo code'); }
   };
-  const proceedToReceipt = () => {
-    const receipt = { id: `CHR-${Date.now().toString().slice(-8)}`, placedAt: new Date().toISOString(), items: cartItems, subtotal, discount, total };
-    window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(receipt));
-    writeCart([]);
-    window.location.href = '/receipt';
+  const updateCheckout = (key) => (event) => { setCheckout((current) => ({ ...current, [key]: event.target.value })); setCheckoutError(''); };
+  const proceedToReceipt = async () => {
+    const required = ['fullName', 'email', 'phone', 'addressLine1', 'city', 'state', 'postcode'];
+    if (required.some((key) => !checkout[key].trim())) { setCheckoutError('Please complete your contact and delivery details.'); return; }
+    if (!/^\S+@\S+\.\S+$/.test(checkout.email)) { setCheckoutError('Please enter a valid email address.'); return; }
+    if (cartItems.some((item) => !item.variantId)) { setCheckoutError('One of these products needs to be refreshed before checkout.'); return; }
+    setPlacingOrder(true);
+    setCheckoutError('');
+    try {
+      const response = await fetch(`${API_URL}/orders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: checkout, paymentMethod: checkout.paymentMethod, promoCode: promo, items: cartItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity })) }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error?.message || 'The order could not be placed.');
+      const order = result.data.order;
+      const receiptItems = order.items.map((line) => {
+        const cartItem = cartItems.find((item) => Number(item.variantId) === Number(line.variantId));
+        return { ...cartItem, ...line, image: cartItem?.image, detail: cartItem?.detail };
+      });
+      const receipt = { id: order.orderNumber, placedAt: new Date().toISOString(), items: receiptItems, subtotal: order.subtotal, discount: order.discount / Math.max(order.subtotal, 1), shipping: order.shipping, total: order.total, customer: order.customer, status: order.status };
+      window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(receipt));
+      catalogueProductsCache = null;
+      writeCart([]);
+      window.location.href = '/receipt';
+    } catch (orderError) {
+      setCheckoutError(orderError.message);
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   return (
     <div className="page-shell cart-page">
       <Header />
       <main>
-        <section className="cart-hero"><img src="/assets/cart/cart-hero.jpg" alt="Gold ring displayed on soft ivory fabric" /><div className="cart-hero-shade" /><div><p>Shopping cart</p><h1>Your Cart</h1><span /><p>Beautiful pieces are just a few steps away.</p></div></section>
+        <section className="cart-hero"><img src={cartContent.hero.image} alt="CHRISÉA shopping cart banner" /><div className="cart-hero-shade" /><div><p>{cartContent.hero.eyebrow}</p><h1>{cartContent.hero.title}</h1><span /><p>{cartContent.hero.description}</p></div></section>
         <section className="cart-layout section-pad">
           <div className="cart-main">
             {cartItems.length ? <>
               <div className="cart-table-head"><span>Product</span><span>Price</span><span>Quantity</span><span>Total</span></div>
-              <div className="cart-items">{cartItems.map((item) => <article className="cart-item" key={item.name}>
-                <a href={`/product/${item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}><img src={item.image} alt={item.name} /></a>
-                <div className="cart-item-info"><h2>{item.name}</h2><p>{item.detail}</p><span>● &nbsp;In stock</span><div><button onClick={() => removeItem(item.name)}>Remove</button><i /><button onClick={() => moveToWishlist(item.name)}>Move to wishlist</button></div></div>
+              <div className="cart-items">{cartItems.map((item) => <article className="cart-item" key={item.cartKey}>
+                <a href={productUrl(item)}><img src={item.image} alt={item.name} /></a>
+                <div className="cart-item-info"><h2>{item.name}</h2><p>{item.detail}</p><span className={item.stock === 0 ? 'sold-out' : ''}>● &nbsp;{item.stock === 0 ? 'Sold out' : `${item.stock} in stock`}</span><div><button onClick={() => removeItem(item.cartKey)}>Remove</button></div></div>
                 <strong>{item.price}</strong>
-                <div className="cart-quantity"><button onClick={() => updateQuantity(item.name, -1)} aria-label={`Decrease ${item.name} quantity`}>−</button><span>{item.quantity}</span><button onClick={() => updateQuantity(item.name, 1)} aria-label={`Increase ${item.name} quantity`}>+</button></div>
+                <div className="cart-quantity"><button onClick={() => updateQuantity(item.cartKey, -1)} aria-label={`Decrease ${item.name} quantity`}>−</button><span>{item.quantity}</span><button disabled={item.quantity >= item.stock} onClick={() => updateQuantity(item.cartKey, 1)} aria-label={`Increase ${item.name} quantity`}>+</button></div>
                 <b>RM {(Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity).toFixed(2)}</b>
               </article>)}</div>
             </> : <div className="cart-empty"><p>Your bag is waiting</p><h2>Find something made for your story.</h2><a href="/shop">Explore the collection <ArrowRight size={14} /></a></div>}
 
-            <section className="cart-recommendations"><p>You might also like</p><h2>Complete the Look</h2><div>{recommendations.map((product) => <article key={product.name}><a href={`/product/${product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}><img src={product.image} alt={product.name} /></a><h3>{product.name}</h3><span>{product.price}</span><button onClick={() => addRecommended(product)}>Add to cart</button></article>)}</div></section>
+            <section className="cart-recommendations"><p>{cartContent.recommendations.eyebrow}</p><h2>{cartContent.recommendations.title}</h2><div>{recommendations.map((product) => <article key={product.id || product.name}><a href={productUrl(product)}><img src={product.image} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</a><h3>{product.name}</h3><span>{product.price}{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</span><button disabled={product.stock === 0} onClick={() => addRecommended(product)}>{product.stock === 0 ? 'Sold out' : 'Add to cart'}</button></article>)}</div></section>
           </div>
 
-          <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>Calculated at next step</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {total.toFixed(2)}</strong></div>
-            {cartItems.length ? <button className="cart-checkout" type="button" onClick={proceedToReceipt}>Proceed to checkout <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
+          <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{total >= 200 ? 'Complimentary' : 'RM 15.00'}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
+            {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email<input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}><option value="bank_transfer">Bank transfer</option><option value="tng_qr">Touch 'n Go QR</option></select></label></div>}
+            {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
+            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={proceedToReceipt}>{placingOrder ? 'Placing order…' : 'Place order'} {!placingOrder && <ArrowRight size={14} />}</button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
             <a className="cart-continue" href="/shop">Continue shopping</a>
             <div className="cart-promo"><label htmlFor="promo">Have a promo code?</label><div><input id="promo" value={promo} onChange={(event) => setPromo(event.target.value)} placeholder="Enter promo code" /><button onClick={applyPromo}>Apply</button></div>{promoMessage && <p>{promoMessage}</p>}</div>
-            <div className="cart-benefits"><div><Truck /><span><strong>Free shipping</strong>Orders over RM250</span></div><div><Gift /><span><strong>Beautiful packaging</strong>Designed with care</span></div><div><ShieldCheck /><span><strong>Secure payment</strong>Your information is safe</span></div></div>
+            <div className="cart-benefits"><div><Truck /><span><strong>{cartBenefits[0]?.title}</strong>{cartBenefits[0]?.text}</span></div><div><Gift /><span><strong>{cartBenefits[1]?.title}</strong>{cartBenefits[1]?.text}</span></div><div><ShieldCheck /><span><strong>{cartBenefits[2]?.title}</strong>{cartBenefits[2]?.text}</span></div></div>
           </aside>
         </section>
       </main>
+      {promoSuccess && <div className="promo-success-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPromoSuccess(null); }}>
+        <section className="promo-success-modal" role="dialog" aria-modal="true" aria-labelledby="promo-success-title">
+          <button className="promo-success-close" type="button" onClick={() => setPromoSuccess(null)} aria-label="Close promotion message"><X /></button>
+          <div className="promo-success-seal"><Sparkles /><span>Offer unlocked</span></div>
+          <p className="promo-success-kicker">A little gift for you</p>
+          <h2 id="promo-success-title">Congratulations!</h2>
+          <p className="promo-success-copy">Your promo code has been applied beautifully to this order.</p>
+          <div className="promo-success-ticket">
+            <span>{promoSuccess.name}</span>
+            <strong>{promoSuccess.code}</strong>
+            <small>{promoSuccess.percentage}% off · You save RM {promoSuccess.saving.toFixed(2)}</small>
+          </div>
+          <button className="promo-success-done" type="button" onClick={() => setPromoSuccess(null)}>Continue checkout <ArrowRight size={14} /></button>
+        </section>
+      </div>}
       <SiteFooter />
     </div>
   );
@@ -825,7 +1167,7 @@ function ReceiptPage() {
     ctx.fillText('Shipping', 90, y + 70);
     ctx.textAlign = 'right';
     ctx.fillText(`RM ${receipt.subtotal.toFixed(2)}`, width - 90, y + 20);
-    ctx.fillText('Complimentary', width - 90, y + 70);
+    ctx.fillText(Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary', width - 90, y + 70);
     ctx.beginPath(); ctx.moveTo(90, y + 110); ctx.lineTo(width - 90, y + 110); ctx.stroke();
     ctx.textAlign = 'left';
     ctx.font = '500 38px Georgia, serif';
@@ -879,7 +1221,7 @@ function ReceiptPage() {
         ...itemLines,
         '',
         `Subtotal: RM ${receipt.subtotal.toFixed(2)}`,
-        'Shipping: Complimentary',
+        `Shipping: ${Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary'}`,
         `Total: RM ${receipt.total.toFixed(2)}`,
       ].join('\n');
       const whatsappUrl = `https://wa.me/60167738560?text=${encodeURIComponent(message)}`;
@@ -913,7 +1255,7 @@ function ReceiptPage() {
             <div className="receipt-status"><span>✓</span><div><p>Order received</p><h2>Your order is confirmed.</h2><small>A copy of these details can be kept for your records.</small></div></div>
             <div className="receipt-meta"><div><span>Order number</span><strong>{receipt.id}</strong></div><div><span>Order date</span><strong>{placedDate}</strong></div><div><span>Status</span><strong>Being prepared</strong></div></div>
             <section className="receipt-items"><h2>Your pieces</h2>{receipt.items.map((item) => <article key={item.name}><img src={item.image} alt={item.name} /><div><h3>{item.name}</h3><p>{item.detail}</p><span>Quantity: {item.quantity}</span></div><strong>RM {(Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity).toFixed(2)}</strong></article>)}</section>
-            <aside className="receipt-summary"><h2>Receipt Summary</h2><div><span>Subtotal</span><strong>RM {receipt.subtotal.toFixed(2)}</strong></div>{receipt.discount > 0 && <div><span>Discount</span><strong>− RM {(receipt.subtotal * receipt.discount).toFixed(2)}</strong></div>}<div><span>Shipping</span><strong>Complimentary</strong></div><footer><span>Total</span><strong>RM {receipt.total.toFixed(2)}</strong></footer></aside>
+            <aside className="receipt-summary"><h2>Receipt Summary</h2><div><span>Subtotal</span><strong>RM {receipt.subtotal.toFixed(2)}</strong></div>{receipt.discount > 0 && <div><span>Discount</span><strong>− RM {(receipt.subtotal * receipt.discount).toFixed(2)}</strong></div>}<div><span>Shipping</span><strong>{Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary'}</strong></div><footer><span>Total</span><strong>RM {receipt.total.toFixed(2)}</strong></footer></aside>
             <div className="receipt-paper-footer"><p>Thank you for choosing CHRISÉA.</p><div className="receipt-footer-actions"><button type="button" disabled={!receiptImageUrl} onClick={downloadReceipt}><Download size={14} /> Download receipt</button><a href="/#top"><House size={14} /> Back to home page</a></div></div>
             {shareMessage && <div className="receipt-share-message" role="status">{shareMessage}</div>}
           </article>
@@ -925,19 +1267,26 @@ function ReceiptPage() {
 }
 
 function App() {
-  const [wish, setWish] = useState([]);
-  const inventory = useCatalogueInventory();
-  const toggleWish = (name) => setWish((items) => items.includes(name) ? items.filter((x) => x !== name) : [...items, name]);
+  const home = useSiteContent('home', { hero: [{ eyebrow: 'CHRISÉA / COLLECTION 01', title: 'An Expression of Elegance.', description: 'Discover the beauty in every detail.', buttonLabel: 'Explore Collection', buttonHref: '#new', image: '/assets/hero/chrisea-jewelry-heart-hero.png' }, { eyebrow: 'CHRISÉA / COLLECTION 02', title: 'Timeless Beauty, Modern You.', description: 'Jewelry for every chapter.', buttonLabel: 'Shop Collection', buttonHref: '#new', image: '/assets/hero/chrisea-jewelry-ring-hero.png' }, { eyebrow: 'CHRISÉA / COLLECTION 03', title: 'A Gift That Lasts.', description: 'Celebrate every meaningful moment.', buttonLabel: 'Discover More', buttonHref: '#promotion', image: '/assets/hero/chrisea-jewelry-bracelet-hero.png' }], categories: categoryShowcase, arrivals: { eyebrow: 'New', title: 'New arrivals', description: 'Curated pieces for modern romantics.', buttonLabel: 'View all', productIds: [] }, editorial: { eyebrow: 'The CHRISÉA Edit', title: 'Styled by You.', subtitle: 'Everyday Elegance', description: 'Timeless pieces, effortless looks. See how our jewelry brings a touch of elegance to your everyday moments.' }, story: { eyebrow: 'Our story', title: 'More than jewellery', description: 'CHRISÉA celebrates modern romance through vintage-inspired details, luminous pearls and meaningful motifs. Each piece is selected to feel personal—made for everyday elegance, thoughtful gifts and the milestones worth remembering.', buttonLabel: 'Discover our story', mainImage: `${A}/pearl-turquoise-bracelet/03-lifestyle.png`, detailImage: `${A}/minimalist-pearl-bracelet/03-lifestyle.png` }, promise: { eyebrow: 'The CHRISÉA promise', title: 'Made to be treasured' } });
+  const { products: catalogueProducts, loading: productsLoading } = useCatalogueProducts();
+  const catalogueCategories = useCatalogueCategories();
+  const selectedProductIds = (home.arrivals.productIds || []).map(String);
+  const selectedProducts = selectedProductIds.map((id) => catalogueProducts.find((product) => String(product.id) === id)).filter(Boolean);
+  const homepageProducts = (selectedProducts.length ? selectedProducts : catalogueProducts).slice(0, 4);
+  const editorialIds = (home.editorial.productIds || []).map(String);
+  const editorialProducts = (editorialIds.map((id) => catalogueProducts.find((product) => String(product.id) === id)).filter(Boolean).length ? editorialIds.map((id) => catalogueProducts.find((product) => String(product.id) === id)).filter(Boolean) : catalogueProducts.slice(4, 7)).slice(0, 3);
+  const promiseItems = home.promise.items || [{ title: 'Thoughtful details', text: 'Vintage-inspired forms, meaningful motifs and a refined finish.' }, { title: 'Gift-ready', text: 'Every order is prepared to make the unboxing feel special.' }, { title: 'Malaysia delivery', text: 'Carefully packed for delivery across our supported locations.' }, { title: 'Personal service', text: 'Order and payment confirmation handled directly via WhatsApp.' }];
+  const homepageCategories = (home.categories?.length ? home.categories : catalogueCategories.map((name, index) => categoryShowcase.find((category) => category.name === name) || { name, image: categoryShowcase[index % categoryShowcase.length].image })).slice(0, 4);
 
   return (
     <div className="page-shell">
       <Header />
 
       <main>
-        <HeroSlider />
+        <HeroSlider content={home.hero} />
 
         <section className="category-grid section-pad" id="categories" aria-label="Shop by category">
-          {categories.map((category) => (
+          {homepageCategories.map((category) => (
             <a className="category-card" href={`/shop?category=${category.name}`} key={category.name}>
               <div className="image-wrap"><img src={category.image} alt={`${category.name} collection`} /></div>
               <h2>{category.name}</h2><span>Explore <ArrowRight size={13} /></span>
@@ -947,22 +1296,24 @@ function App() {
 
         <section className="arrivals section-pad" id="new">
           <div className="section-intro">
-            <p className="eyebrow dark">New</p>
-            <h2>New arrivals</h2>
+            <p className="eyebrow dark">{home.arrivals.eyebrow}</p>
+            <h2>{home.arrivals.title}</h2>
             <div className="short-rule" />
-            <p>Curated pieces for modern romantics.</p>
-            <a className="button button-dark" href="/shop">View all <ArrowRight size={15} /></a>
+            <p>{home.arrivals.description}</p>
+            <a className="button button-dark" href="/shop">{home.arrivals.buttonLabel} <ArrowRight size={15} /></a>
           </div>
           <div className="product-track" id="products">
-            {products.map((product) => { const stock = getProductStock(product, inventory); const soldOut = stock === 0; return (
-              <article className={`product-card ${soldOut ? 'is-sold-out' : ''}`} key={product.name}>
+            {productsLoading && <div className="shop-catalog-message"><Sparkles /><h3>Preparing new arrivals…</h3></div>}
+            {!productsLoading && !homepageProducts.length && <div className="shop-catalog-message"><Gem /><h3>New pieces are coming soon.</h3></div>}
+            {homepageProducts.map((product) => { const stock = getProductStock(product); const soldOut = stock === 0; return (
+              <article className={`product-card ${soldOut ? 'is-sold-out' : ''}`} key={product.id || product.name}>
                 <div className="product-image">
-                  <img src={product.image} alt={product.name} />
-                  <button className={`heart-button ${wish.includes(product.name) ? 'active' : ''}`} onClick={() => toggleWish(product.name)} aria-label={`Save ${product.name}`}><Heart /></button>
+                  <a href={productUrl(product)}><img src={product.image} alt={product.name} /></a>
+                  {product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}
                   {soldOut && <span className="sold-out-badge">Sold out</span>}
-                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Quick add'}</button>
+                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Add to cart'}</button>
                 </div>
-                <div className="product-copy"><h3>{product.name}</h3><p>{product.detail}</p><strong>{product.price}</strong>{typeof stock === 'number' && <small className={soldOut ? 'sold-out-note' : stock <= 3 ? 'low-stock-note' : 'stock-note'}>{soldOut ? 'Sold out' : stock <= 3 ? `Only ${stock} left` : 'In stock'}</small>}</div>
+                <div className="product-copy"><h3><a href={productUrl(product)}>{product.name}</a></h3><p>{product.detail}</p><span className="product-card-price"><strong>{product.price}</strong>{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</span>{typeof stock === 'number' && <small className={soldOut ? 'sold-out-note' : stock <= 3 ? 'low-stock-note' : 'stock-note'}>{soldOut ? 'Sold out' : stock <= 3 ? `Only ${stock} left` : 'In stock'}</small>}</div>
               </article>
             ); })}
           </div>
@@ -970,61 +1321,45 @@ function App() {
 
         <section className="editorial-edit section-pad" id="promotion">
           <div className="editorial-copy">
-            <p className="editorial-label">The CHRISÉA Edit</p>
+            <p className="editorial-label">{home.editorial.eyebrow}</p>
             <div className="short-rule" />
-            <h2>Styled by You.</h2>
-            <h3>Everyday Elegance</h3>
-            <p>Timeless pieces, effortless looks. See how our jewelry brings a touch of elegance to your everyday moments.</p>
+            <h2>{home.editorial.title}</h2>
+            <h3>{home.editorial.subtitle}</h3>
+            <p>{home.editorial.description}</p>
             <a className="button button-dark editorial-cta" href="/shop">Explore collection <ArrowRight size={15} /></a>
             <p className="editorial-signoff">Real moments.<br />Lasting impressions.</p>
           </div>
 
-          <a className="editorial-card editorial-card--main" href="/product/lapis-lazuli-vintage-ring" aria-label="View Lapis Lazuli Vintage Ring">
-            <img src="/assets/products/lapis-mother-of-pearl-ring/01-vintage-gold.png" alt="S925 Vintage Zircon Lapis Lazuli Ring" />
-            <span className="editorial-card-gradient" />
-            <span className="editorial-product-copy"><small>Rings</small><strong>Lapis Lazuli Vintage Ring</strong><em>View product <ArrowRight /></em></span>
-            <span className="editorial-product-plus">+</span>
-          </a>
+          {editorialProducts[0] && <a className="editorial-card editorial-card--main" href={productUrl(editorialProducts[0])} aria-label={`View ${editorialProducts[0].name}`}><img src={editorialProducts[0].image} alt={editorialProducts[0].name} /><span className="editorial-card-gradient" /><span className="editorial-product-copy"><small>{editorialProducts[0].category}</small><strong>{editorialProducts[0].name}</strong><em>View product <ArrowRight /></em></span><span className="editorial-product-plus">+</span></a>}
 
           <div className="editorial-stack">
-            <a className="editorial-card" href="/product/statement-heart-zircon-earrings" aria-label="View Statement Heart Zircon Earrings">
-              <img src="/assets/products/statement-heart-zircon-earrings/01-vintage-gold.png" alt="S925 Sterling Silver Statement Heart Zircon Earrings" />
-              <span className="editorial-card-gradient" />
-              <span className="editorial-product-copy"><small>Earrings</small><strong>Heart Zircon Earrings</strong><em>View product <ArrowRight /></em></span>
-              <span className="editorial-product-plus">+</span>
-            </a>
-            <a className="editorial-card" href="/product/gilded-bow-ring" aria-label="View Gilded Bow Ring">
-              <img src="/assets/products/gilded-bow-ring/04-main.png" alt="Gilded Bow Ring" />
-              <span className="editorial-card-gradient" />
-              <span className="editorial-product-copy"><small>Rings</small><strong>Gilded Bow Ring</strong><em>View product <ArrowRight /></em></span>
-              <span className="editorial-product-plus">+</span>
-            </a>
+            {editorialProducts.slice(1, 3).map((product) => <a className="editorial-card" href={productUrl(product)} aria-label={`View ${product.name}`} key={product.id || product.name}><img src={product.image} alt={product.name} /><span className="editorial-card-gradient" /><span className="editorial-product-copy"><small>{product.category}</small><strong>{product.name}</strong><em>View product <ArrowRight /></em></span><span className="editorial-product-plus">+</span></a>)}
           </div>
         </section>
 
         <section className="story section-pad" id="story">
           <div className="story-copy">
-            <p className="eyebrow dark">Our story</p>
-            <h2>More than<br />jewellery</h2>
+            <p className="eyebrow dark">{home.story.eyebrow}</p>
+            <h2>{home.story.title}</h2>
             <div className="short-rule" />
-            <p>CHRISÉA celebrates modern romance through vintage-inspired details, luminous pearls and meaningful motifs. Each piece is selected to feel personal—made for everyday elegance, thoughtful gifts and the milestones worth remembering.</p>
-            <a className="button button-dark story-button" href="/about">Discover our story <ArrowRight size={15} /></a>
+            <p>{home.story.description}</p>
+            <a className="button button-dark story-button" href="/about">{home.story.buttonLabel} <ArrowRight size={15} /></a>
             <p className="story-signoff"><span />Every detail tells a story.</p>
           </div>
           <div className="story-collage">
-            <img className="story-main" src={`${A}/pearl-turquoise-bracelet/03-lifestyle.png`} alt="Pearl and turquoise bracelet styled on the wrist" />
-            <img className="story-detail" src={`${A}/minimalist-pearl-bracelet/03-lifestyle.png`} alt="Natural pearl bracelet in a warm vintage setting" />
+            <img className="story-main" src={home.story.mainImage} alt="Pearl and turquoise bracelet styled on the wrist" />
+            <img className="story-detail" src={home.story.detailImage} alt="Natural pearl bracelet in a warm vintage setting" />
             <div className="story-seal">Designed<br />for<br /><b>✦</b><br />every<br />chapter</div>
           </div>
         </section>
 
         <section className="promise section-pad" id="reviews">
-          <div className="promise-heading"><p className="eyebrow dark">The CHRISÉA promise</p><h2>Made to be treasured</h2></div>
+          <div className="promise-heading"><p className="eyebrow dark">{home.promise.eyebrow}</p><h2>{home.promise.title}</h2></div>
           <div className="promise-grid">
-            <div><Sparkles /><h3>Thoughtful details</h3><p>Vintage-inspired forms, meaningful motifs and a refined finish.</p></div>
-            <div><Gift /><h3>Gift-ready</h3><p>Every order is prepared to make the unboxing feel special.</p></div>
-            <div><Truck /><h3>Malaysia delivery</h3><p>Carefully packed for delivery across our supported locations.</p></div>
-            <div><ShieldCheck /><h3>Personal service</h3><p>Order and payment confirmation handled directly via WhatsApp.</p></div>
+            <div><Sparkles /><h3>{promiseItems[0]?.title}</h3><p>{promiseItems[0]?.text}</p></div>
+            <div><Gift /><h3>{promiseItems[1]?.title}</h3><p>{promiseItems[1]?.text}</p></div>
+            <div><Truck /><h3>{promiseItems[2]?.title}</h3><p>{promiseItems[2]?.text}</p></div>
+            <div><ShieldCheck /><h3>{promiseItems[3]?.title}</h3><p>{promiseItems[3]?.text}</p></div>
           </div>
         </section>
       </main>
@@ -1036,6 +1371,78 @@ function App() {
 
 function SiteRouter() {
   const [currentUrl, setCurrentUrl] = useState(() => ({ value: `${window.location.pathname}${window.location.search}${window.location.hash}` }));
+
+  useEffect(() => {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const pages = {
+      '/': ['CHRISÉA Jewelry | Timeless Sterling Silver Jewellery', 'Discover vintage-inspired sterling silver necklaces, rings, earrings and bracelets made for gifting, keeping and every meaningful chapter.'],
+      '/shop': ['Shop Sterling Silver Jewellery | CHRISÉA', 'Shop CHRISÉA necklaces, bracelets, rings and earrings in sterling silver, pearls and timeless vintage-inspired details.'],
+      '/about': ['Our Story | CHRISÉA Jewelry', 'Meet CHRISÉA, a Malaysian online jewellery house celebrating modern romance through vintage-inspired sterling silver keepsakes.'],
+      '/reviews': ['Customer Reviews | CHRISÉA Jewelry', 'Read customer stories and discover how the CHRISÉA community styles and treasures its jewellery.'],
+      '/cart': ['Shopping Cart | CHRISÉA Jewelry', 'Review the jewellery in your CHRISÉA shopping cart.', 'noindex, nofollow'],
+      '/receipt': ['Order Receipt | CHRISÉA Jewelry', 'Review your CHRISÉA order receipt.', 'noindex, nofollow']
+    };
+    const page = pages[path];
+    if (path === ADMIN_ENTRY_PATH || path === '/admin' || path.startsWith('/admin/')) {
+      applySeo({ title: 'Private access | CHRISÉA Jewelry', description: 'Private administrator access.', path, robots: 'noindex, nofollow, noarchive' });
+    } else if (path.startsWith('/product/')) {
+      applySeo({ title: 'Jewellery | CHRISÉA Jewelry', description: 'Discover this CHRISÉA jewellery piece.', path });
+    } else if (page) {
+      applySeo({ title: page[0], description: page[1], path, robots: page[2] });
+    }
+    setJsonLd('seo-organization-jsonld', {
+      '@context': 'https://schema.org',
+      '@graph': [
+        { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: 'CHRISÉA Jewelry', alternateName: 'CHRISÉA', url: `${SITE_URL}/`, logo: `${SITE_URL}/icon-512.png` },
+        { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: `${SITE_URL}/`, name: 'CHRISÉA Jewelry', publisher: { '@id': `${SITE_URL}/#organization` }, inLanguage: 'en-MY' },
+        { '@type': 'OnlineStore', '@id': `${SITE_URL}/#store`, name: 'CHRISÉA Jewelry', url: `${SITE_URL}/`, image: DEFAULT_SHARE_IMAGE, priceRange: 'RM', currenciesAccepted: 'MYR', areaServed: { '@type': 'Country', name: 'Malaysia' } }
+      ]
+    });
+  }, [currentUrl]);
+
+  useEffect(() => {
+    const device = new URLSearchParams(window.location.search).get('cmsDevice');
+    document.documentElement.classList.toggle('cms-preview-desktop', device === 'desktop');
+    return () => document.documentElement.classList.remove('cms-preview-desktop');
+  }, []);
+
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('cmsPreview')) return undefined;
+    let selectedTarget = null;
+    const selectors = {
+      home: { hero: '.hero-slider', arrivals: '#new', editorial: '#promotion', story: '#story', promise: '#reviews' },
+      shop: { promotion: '.shop-promotion', favourites: '.sale-favorites', catalogue: '.shop-catalog' },
+      cart: { hero: '.cart-hero', recommendations: '.cart-recommendations', benefits: '.cart-benefits' },
+      about: { hero: '.about-hero', story: '.about-origin', values: '.about-values', general: '.about-quote', cta: '.about-cta' },
+      reviews: { hero: '.reviews-hero', feed: '.reviews-feed', social: '.reviews-social', cta: '.reviews-cta' },
+      announcement: { general: '.announcement' },
+      footer: { general: '#contact', faq: '.care-modal-panel', shipping: '.care-modal-panel', returns: '.care-modal-panel', contact: '.care-modal-panel' }
+    };
+    const receive = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'chrisea-cms-section') return;
+      document.querySelectorAll('.cms-preview-selected').forEach((element) => element.classList.remove('cms-preview-selected'));
+      const showSection = () => {
+        selectedTarget = document.querySelector(selectors[event.data.page]?.[event.data.section]);
+        if (selectedTarget) {
+          selectedTarget.classList.add('cms-preview-selected');
+          selectedTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+      showSection();
+      if (!selectedTarget) window.setTimeout(showSection, 80);
+    };
+    const blockInteraction = (event) => {
+      if (event.target.closest('a,button,input,select,textarea,form')) { event.preventDefault(); event.stopPropagation(); }
+    };
+    window.addEventListener('message', receive);
+    document.addEventListener('click', blockInteraction, true);
+    document.addEventListener('submit', blockInteraction, true);
+    return () => {
+      window.removeEventListener('message', receive);
+      document.removeEventListener('click', blockInteraction, true);
+      document.removeEventListener('submit', blockInteraction, true);
+    };
+  }, []);
 
   useEffect(() => {
     const syncUrl = () => setCurrentUrl({ value: `${window.location.pathname}${window.location.search}${window.location.hash}` });
@@ -1070,8 +1477,59 @@ function SiteRouter() {
     });
   }, [currentUrl]);
 
-  const currentPath = window.location.pathname;
-  return currentPath.startsWith('/admin') ? <AdminApp /> : currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />;
+  useEffect(() => {
+    if (window.location.pathname.replace(/\/+$/, '') === ADMIN_ENTRY_PATH) return undefined;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const root = document.getElementById('root');
+    const frame = window.requestAnimationFrame(() => {
+      root?.classList.remove('route-enter');
+      window.requestAnimationFrame(() => root?.classList.add('route-enter'));
+    });
+
+    const images = [...document.querySelectorAll('main img, footer img')];
+    images.forEach((image, index) => {
+      image.decoding = 'async';
+      if (index < 2 || image.closest('.hero-slider, .about-hero, .reviews-hero, .cart-hero, .product-main-image')) {
+        image.loading = 'eager';
+        if (index === 0) image.fetchPriority = 'high';
+      } else {
+        image.loading = 'lazy';
+        image.fetchPriority = 'low';
+      }
+    });
+
+    const revealTargets = [...document.querySelectorAll('main > section, main > article, main section > header, .shop-card, .sale-favorite-card, .category-card, .review-card, .editorial-card')];
+    if (reducedMotion || !('IntersectionObserver' in window)) {
+      revealTargets.forEach((element) => element.classList.add('motion-visible'));
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    revealTargets.forEach((element, index) => {
+      element.classList.add('motion-reveal');
+      element.style.setProperty('--motion-order', String(index % 6));
+    });
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('motion-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    revealTargets.forEach((element) => observer.observe(element));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [currentUrl]);
+
+  const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (currentPath === ADMIN_ENTRY_PATH) return <React.Suspense fallback={<main className="site-error-screen"><p>Secure access</p><h1>Opening the atelier…</h1></main>}><AdminApp /></React.Suspense>;
+  if (currentPath === '/admin' || currentPath.startsWith('/admin/')) {
+    return <main className="site-error-screen"><img src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry" /><p>404</p><h1>This page does not exist.</h1><div><a href="/">Return to boutique</a></div></main>;
+  }
+  return currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />;
 }
 
 class AppErrorBoundary extends React.Component {

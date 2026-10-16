@@ -9,11 +9,15 @@ const command = process.argv[2];
 const filenames = {
   migrate: 'schema.sql',
   seed: 'seed-products.sql',
-  stock: 'seed-stock.sql'
+  stock: 'seed-stock.sql',
+  details: 'product-details.sql',
+  content: 'site-content.sql',
+  discounts: 'product-discounts.sql',
+  'promo-rules': 'promotion-rules.sql'
 };
 
 if (!filenames[command]) {
-  throw new Error('Usage: npm run db:migrate, npm run db:seed or npm run db:stock');
+  throw new Error('Usage: npm run db:migrate, db:seed, db:stock, db:details, db:content, db:discounts or db:promo-rules');
 }
 
 if (!env.DB_USER) {

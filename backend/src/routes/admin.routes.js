@@ -1,12 +1,42 @@
 import { Router } from 'express';
-import { createProduct, dashboard, listOrders, listProducts } from '../controllers/admin.controller.js';
+import { adjustProductStock, createCategory, createProduct, createPromotion, dashboard, deleteCategory, deleteOrder, deleteProduct, deletePromotion, getOrder, getProduct, listCategories, listDeletedOrders, listDeletedProducts, listOrders, listProducts, listPromotions, permanentlyDeleteOrder, permanentlyDeleteProduct, restoreOrder, restoreProduct, togglePromotion, updateOrderStatus, updateProduct, uploadProductImage } from '../controllers/admin.controller.js';
 import { authenticate, requireRole } from '../middleware/authenticate.js';
 import { asyncHandler } from '../utils/async-handler.js';
+import { adminContent, publishContent, saveContentDraft } from '../controllers/content.controller.js';
 
 export const adminRouter = Router();
 
+adminRouter.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 adminRouter.use(authenticate, requireRole('admin'));
 adminRouter.get('/dashboard', asyncHandler(dashboard));
+adminRouter.get('/categories', asyncHandler(listCategories));
+adminRouter.post('/categories', asyncHandler(createCategory));
+adminRouter.delete('/categories/:id', asyncHandler(deleteCategory));
 adminRouter.get('/products', asyncHandler(listProducts));
+adminRouter.get('/products-trash', asyncHandler(listDeletedProducts));
+adminRouter.get('/products/:id', asyncHandler(getProduct));
 adminRouter.post('/products', asyncHandler(createProduct));
+adminRouter.put('/products/:id', asyncHandler(updateProduct));
+adminRouter.patch('/products/:id/stock', asyncHandler(adjustProductStock));
+adminRouter.delete('/products/:id', asyncHandler(deleteProduct));
+adminRouter.patch('/products/:id/restore', asyncHandler(restoreProduct));
+adminRouter.delete('/products/:id/permanent', asyncHandler(permanentlyDeleteProduct));
+adminRouter.post('/product-images', asyncHandler(uploadProductImage));
+adminRouter.post('/content-images', asyncHandler(uploadProductImage));
 adminRouter.get('/orders', asyncHandler(listOrders));
+adminRouter.get('/orders-trash', asyncHandler(listDeletedOrders));
+adminRouter.get('/orders/:id', asyncHandler(getOrder));
+adminRouter.patch('/orders/:id/status', asyncHandler(updateOrderStatus));
+adminRouter.delete('/orders/:id', asyncHandler(deleteOrder));
+adminRouter.patch('/orders/:id/restore', asyncHandler(restoreOrder));
+adminRouter.delete('/orders/:id/permanent', asyncHandler(permanentlyDeleteOrder));
+adminRouter.get('/promotions', asyncHandler(listPromotions));
+adminRouter.post('/promotions', asyncHandler(createPromotion));
+adminRouter.patch('/promotions/:id', asyncHandler(togglePromotion));
+adminRouter.delete('/promotions/:id', asyncHandler(deletePromotion));
+adminRouter.get('/content/:page', asyncHandler(adminContent));
+adminRouter.put('/content/:page', asyncHandler(saveContentDraft));
+adminRouter.post('/content/:page/publish', asyncHandler(publishContent));

@@ -46,6 +46,48 @@
 - Terms & Conditions and Privacy Policy.
 - Replace all placeholder business and product information.
 
+## Confirmed Future Systems — 14 October 2026
+
+### 1. Interactive Administration Tutorial
+
+Goal: teach a new administrator how to use every completed administration page without requiring a separate manual.
+
+- Provide a first-login welcome and an optional guided tour.
+- Give each administration page its own interactive walkthrough.
+- Highlight the exact control being explained while dimming the rest of the interface.
+- Include concise instructions, step progress, Back, Next, Skip and Finish controls.
+- Explain product creation, image entry, categories, price, variants, stock and product status.
+- Explain order handling, payment verification, customers, promotions, analytics and settings when those pages are implemented.
+- Save tutorial completion per administrator so completed tours do not open automatically again.
+- Add a persistent “Help / Start tutorial” control so a tour can be replayed at any time.
+- Support desktop, tablet and mobile layouts and keep tutorial text easy to update.
+- Never allow the tutorial to submit, delete or modify real records by itself.
+
+### 2. Frontend Content Management
+
+Goal: allow an authorised administrator to update selected frontend wording from the administration area without editing source code.
+
+- Add a Content section to the administration navigation.
+- Organise editable content by frontend page and section, for example Home hero, announcement bar, About, Shop promotions, FAQ, Contact and footer.
+- Use clearly labelled fields that correspond to visible frontend content.
+- Support Draft, Preview and Publish states.
+- Show a frontend preview before publishing changes.
+- Store content in the database and expose only published content through a public API.
+- Keep revision history with the administrator, timestamp and changed values.
+- Allow restoration of a previous published revision.
+- Validate field length and content type on the server.
+- Restrict editing and publishing to authorised administrator roles.
+- Keep fixed brand elements, legal text and structural layout locked unless explicitly configured as editable.
+- Use safe plain text by default; any rich-text field must be sanitised before display.
+
+### Decisions Required Before Implementation
+
+- Confirm whether tutorial wording should be English only, Chinese only, or bilingual.
+- Confirm whether every administrator receives the same tutorial or whether it varies by role.
+- Confirm which frontend pages and exact text sections administrators may edit.
+- Confirm whether one administrator can publish directly or another administrator must approve changes.
+- Confirm whether content management covers text only initially, or also banners, photographs, buttons and links.
+
 ## Phase 6 — Quality and Deployment
 
 - Unit and API integration tests.

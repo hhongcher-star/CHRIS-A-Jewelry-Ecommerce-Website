@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /cart
+Disallow: /receipt
+
+Sitemap: https://mediumvioletred-stingray-627422.hostingersite.com/sitemap.xml

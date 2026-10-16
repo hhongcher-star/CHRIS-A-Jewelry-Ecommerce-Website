@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import path from 'node:path';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -12,6 +13,9 @@ import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { catalogRouter } from './routes/catalog.routes.js';
+import { orderRouter } from './routes/order.routes.js';
+import { promotionRouter } from './routes/promotion.routes.js';
+import { contentRouter } from './routes/content.routes.js';
 
 export function createApp() {
   const app = express();
@@ -37,9 +41,13 @@ export function createApp() {
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
     })
   );
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({ limit: '8mb' }));
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(cookieParser());
+  app.use('/uploads', (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  }, express.static(path.resolve(process.cwd(), 'uploads')));
   app.use(
     '/api',
     rateLimit({
@@ -53,6 +61,9 @@ export function createApp() {
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/products', catalogRouter);
+  app.use('/api/orders', orderRouter);
+  app.use('/api/promotions', promotionRouter);
+  app.use('/api/content', contentRouter);
   app.use('/api/admin', adminRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);

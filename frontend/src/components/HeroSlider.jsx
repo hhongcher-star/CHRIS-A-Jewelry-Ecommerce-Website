@@ -39,7 +39,9 @@ export const heroSlides = [
   },
 ];
 
-export default function HeroSlider() {
+export default function HeroSlider({ content }) {
+  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image }; }) : heroSlides;
+  const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
   const [activeSlide, setActiveSlide] = useState(0);
   const [cycle, setCycle] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -47,7 +49,7 @@ export default function HeroSlider() {
   const timer = useRef(null);
 
   const selectSlide = useCallback((index) => {
-    const next = (index + heroSlides.length) % heroSlides.length;
+    const next = (index + slides.length) % slides.length;
     window.clearTimeout(timer.current);
     setActiveSlide(next);
     setCycle((value) => value + 1);
@@ -62,17 +64,18 @@ export default function HeroSlider() {
   }, []);
 
   useEffect(() => {
+    if (previewing) return undefined;
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
-      setActiveSlide((current) => (current + 1) % heroSlides.length);
+      setActiveSlide((current) => (current + 1) % slides.length);
       setCycle((value) => value + 1);
     }, SLIDE_DURATION);
 
     return () => window.clearTimeout(timer.current);
-  }, [activeSlide, cycle]);
+  }, [activeSlide, cycle, previewing]);
 
   useEffect(() => {
-    heroSlides.forEach(({ image }) => {
+    slides.forEach(({ image }) => {
       const preload = new Image();
       preload.src = image;
     });
@@ -94,16 +97,16 @@ export default function HeroSlider() {
       className={`hero-slider ${reducedMotion ? 'reduce-motion' : ''}`}
       aria-roledescription="carousel"
       aria-label="CHRISÉA featured collections"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      onTouchStart={previewing ? undefined : handleTouchStart}
+      onTouchEnd={previewing ? undefined : handleTouchEnd}
     >
       <div
         className="hero-slides"
         aria-live="polite"
-        onClick={() => selectSlide(activeSlide + 1)}
+        onClick={() => { if (!previewing) selectSlide(activeSlide + 1); }}
         title="View next slide"
       >
-        {heroSlides.map((slide, index) => (
+        {slides.map((slide, index) => (
           <div
             className={`hero-slide ${index === activeSlide ? 'is-active' : ''}`}
             key={slide.image}
@@ -120,13 +123,13 @@ export default function HeroSlider() {
       <div className="hero-shade" />
 
       <div className="hero-content" key={`${activeSlide}-${cycle}`}>
-        <p className="hero-kicker">{heroSlides[activeSlide].collection}</p>
+        <p className="hero-kicker">{slides[activeSlide].collection}</p>
         <span className="hero-rule" />
-        <h1 aria-label={heroSlides[activeSlide].title}>
-          {heroSlides[activeSlide].titleLines.map((line, index) => <span className="hero-title-line" key={line} style={{ '--line-index': index }}>{line}</span>)}
+        <h1 aria-label={slides[activeSlide].title}>
+          {slides[activeSlide].titleLines.map((line, index) => <span className="hero-title-line" key={line} style={{ '--line-index': index }}>{line}</span>)}
         </h1>
-        <p className="hero-description">{heroSlides[activeSlide].description}</p>
-        <a className="hero-cta" href={heroSlides[activeSlide].href}>{heroSlides[activeSlide].cta}<ArrowRight /></a>
+        <p className="hero-description">{slides[activeSlide].description}</p>
+        <a className="hero-cta" href={slides[activeSlide].href}>{slides[activeSlide].cta}<ArrowRight /></a>
       </div>
 
       <div className="hero-index"><span>0{activeSlide + 1}</span><i /><span>03</span></div>

@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { AppError } from '../errors/app-error.js';
-import { loginUser, refreshSession, registerUser, revokeSession } from '../services/auth.service.js';
+import { loginAdminUser, loginUser, refreshSession, registerUser, revokeSession } from '../services/auth.service.js';
 import { durationToMilliseconds } from '../utils/duration.js';
 
 const cookieName = 'chrisea_refresh';
@@ -26,6 +26,10 @@ export async function register(req, res) {
 
 export async function login(req, res) {
   sendAuthentication(res, 200, await loginUser(req.validatedBody));
+}
+
+export async function adminLogin(req, res) {
+  sendAuthentication(res, 200, await loginAdminUser(req.validatedBody));
 }
 
 export async function refresh(req, res) {
