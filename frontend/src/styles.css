@@ -106,7 +106,7 @@ img { display: block; width: 100%; }
 .hero-slides, .hero-slide, .hero-slide img, .hero-shade { position: absolute; inset: 0; }
 .hero-slide { opacity: 0; transition: opacity 1200ms ease-in-out; pointer-events: none; }
 .hero-slide.is-active { opacity: 1; z-index: 1; }
-.hero-slide img { height: 100%; object-fit: var(--image-fit, contain); object-position: var(--desktop-position); transform: scale(var(--image-zoom, 1)); transform-origin: var(--desktop-position); }
+.hero-slide img { --image-zoom: var(--desktop-zoom, 1); height: 100%; object-fit: var(--desktop-fit, contain); object-position: var(--desktop-position); transform: scale(var(--image-zoom)); transform-origin: var(--desktop-position); }
 .hero-slide.is-active img { animation: hero-zoom 4s linear both; }
 .hero-shade { z-index: 2; pointer-events: none; background: transparent; }
 .hero-content { width: min(650px, 46vw); position: absolute; z-index: 3; left: 9%; top: 50%; transform: translateY(-50%); }
@@ -732,7 +732,7 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .bag-button svg { width: 25px; height: 25px; }
   .bag-button b { width: 20px; height: 20px; top: -1px; right: -1px; font-size: 10px; }
   .hero-slider { height: calc(100svh - 120px); min-height: 620px; max-height: 760px; }
-  .hero-slide img { object-position: var(--mobile-position); }
+  .hero-slide img { --image-zoom: var(--mobile-zoom, var(--desktop-zoom, 1)); object-fit: var(--mobile-fit, var(--desktop-fit, contain)); object-position: var(--mobile-position); transform-origin: var(--mobile-position); }
   .hero-shade { background: transparent; }
   .hero-content { width: auto; left: 24px; right: 24px; top: auto; bottom: 104px; transform: none; }
   .hero-kicker { font-size: 10px; letter-spacing: .18em; }

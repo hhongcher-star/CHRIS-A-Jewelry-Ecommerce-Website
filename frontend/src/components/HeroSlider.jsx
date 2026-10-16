@@ -40,7 +40,7 @@ export const heroSlides = [
 ];
 
 export default function HeroSlider({ content, imageAdjustments = {} }) {
-  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; const adjustment = imageAdjustments[`hero.${index}.image`] || {}; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image, zoom: Number(adjustment.zoom || 100), fit: adjustment.fit || 'contain', position: `${Number(adjustment.x ?? 50)}% ${Number(adjustment.y ?? 50)}%`, mobilePosition: `${Number(adjustment.x ?? 50)}% ${Number(adjustment.y ?? 50)}%` }; }) : heroSlides;
+  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; const saved = imageAdjustments[`hero.${index}.image`] || {}; const desktop = saved.desktop || saved; const mobile = saved.mobile || saved; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image, desktopZoom: Number(desktop.zoom || 100), mobileZoom: Number(mobile.zoom || desktop.zoom || 100), desktopFit: desktop.fit || 'contain', mobileFit: mobile.fit || desktop.fit || 'contain', position: `${Number(desktop.x ?? 50)}% ${Number(desktop.y ?? 50)}%`, mobilePosition: `${Number(mobile.x ?? desktop.x ?? 50)}% ${Number(mobile.y ?? desktop.y ?? 50)}%` }; }) : heroSlides;
   const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
   const [activeSlide, setActiveSlide] = useState(0);
   const [cycle, setCycle] = useState(0);
@@ -115,7 +115,7 @@ export default function HeroSlider({ content, imageAdjustments = {} }) {
             <img
               src={slide.image}
               alt=""
-              style={{ '--desktop-position': slide.position, '--mobile-position': slide.mobilePosition, '--image-zoom': (slide.zoom || 100) / 100, '--image-fit': slide.fit || 'contain' }}
+              style={{ '--desktop-position': slide.position, '--mobile-position': slide.mobilePosition, '--desktop-zoom': (slide.desktopZoom || 100) / 100, '--mobile-zoom': (slide.mobileZoom || slide.desktopZoom || 100) / 100, '--desktop-fit': slide.desktopFit || 'contain', '--mobile-fit': slide.mobileFit || slide.desktopFit || 'contain' }}
             />
           </div>
         ))}
