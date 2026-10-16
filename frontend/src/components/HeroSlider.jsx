@@ -39,8 +39,8 @@ export const heroSlides = [
   },
 ];
 
-export default function HeroSlider({ content, imageAdjustments = {} }) {
-  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; const saved = imageAdjustments[`hero.${index}.image`] || {}; const desktop = saved.desktop || saved; const mobile = saved.mobile || {}; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image, desktopZoom: Number(desktop.zoom || 100), mobileZoom: Number(mobile.zoom || 100), desktopFit: desktop.fit || 'contain', mobileFit: mobile.fit || 'cover', position: `${Number(desktop.x ?? 50)}% ${Number(desktop.y ?? 50)}%`, mobilePosition: `${Number(mobile.x ?? 68)}% ${Number(mobile.y ?? 50)}%` }; }) : heroSlides;
+export default function HeroSlider({ content, imageAdjustments = {}, mobileImages = {} }) {
+  const slides = Array.isArray(content) ? heroSlides.map((fallback, index) => { const item = content[index] || {}; const path = `hero.${index}.image`; const saved = imageAdjustments[path] || {}; const desktop = saved.desktop || saved; const mobile = saved.mobile || {}; return { ...fallback, collection: item.eyebrow ?? fallback.collection, title: item.title ?? fallback.title, titleLines: String(item.title ?? fallback.title).split(/\n|(?<=\.)\s+/).filter(Boolean), description: item.description ?? fallback.description, cta: item.buttonLabel ?? fallback.cta, href: item.buttonHref ?? fallback.href, image: item.image ?? fallback.image, mobileImage: mobileImages[path] || '', desktopZoom: Number(desktop.zoom || 100), mobileZoom: Number(mobile.zoom || 100), desktopFit: desktop.fit || 'contain', mobileFit: mobile.fit || 'cover', position: `${Number(desktop.x ?? 50)}% ${Number(desktop.y ?? 50)}%`, mobilePosition: `${Number(mobile.x ?? 68)}% ${Number(mobile.y ?? 50)}%` }; }) : heroSlides;
   const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
   const [activeSlide, setActiveSlide] = useState(0);
   const [cycle, setCycle] = useState(0);
@@ -113,10 +113,17 @@ export default function HeroSlider({ content, imageAdjustments = {} }) {
             aria-hidden={index !== activeSlide}
           >
             <img
+              className={slide.mobileImage ? 'cms-image-desktop has-mobile' : 'cms-image-desktop'}
               src={slide.image}
               alt=""
               style={{ '--desktop-position': slide.position, '--mobile-position': slide.mobilePosition, '--desktop-zoom': (slide.desktopZoom || 100) / 100, '--mobile-zoom': (slide.mobileZoom || slide.desktopZoom || 100) / 100, '--desktop-fit': slide.desktopFit || 'contain', '--mobile-fit': slide.mobileFit || slide.desktopFit || 'contain' }}
             />
+            {slide.mobileImage && <img
+              className="cms-image-mobile"
+              src={slide.mobileImage}
+              alt=""
+              style={{ '--mobile-position': slide.mobilePosition, '--mobile-zoom': (slide.mobileZoom || 100) / 100, '--mobile-fit': slide.mobileFit || 'cover' }}
+            />}
           </div>
         ))}
       </div>

@@ -20,6 +20,12 @@
 .motion-reveal.motion-visible { opacity: 1; transform: translate3d(0, 0, 0); }
 main > section:not(.hero-slider):not(.about-hero):not(.reviews-hero):not(.cart-hero) { content-visibility: auto; contain-intrinsic-size: auto 700px; }
 img { content-visibility: auto; }
+img.cms-image-mobile { display: none; }
+
+@media (max-width: 760px) {
+  img.cms-image-desktop.has-mobile { display: none; }
+  img.cms-image-mobile { display: block; }
+}
 
 @keyframes route-enter {
   from { opacity: 0; transform: translate3d(0, 10px, 0); }

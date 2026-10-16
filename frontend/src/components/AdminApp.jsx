@@ -733,7 +733,9 @@ function writeContentPath(source, path, value) {
 }
 
 function ContentImageField({ content, path, device, uploading, onUpload, onChange }) {
-  const image = readContentPath(content, path);
+  const desktopImage = readContentPath(content, path);
+  const mobileImage = content._mobileImages?.[path] || '';
+  const image = device === 'mobile' ? (mobileImage || desktopImage) : desktopImage;
   const savedAdjustment = content._imageAdjustments?.[path] || {};
   const adjustment = savedAdjustment[device] || (device === 'mobile' ? { zoom: 100, x: 68, y: 50, fit: 'cover' } : savedAdjustment);
   const zoom = Number(adjustment.zoom || 100);
@@ -761,7 +763,11 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
       <label><span>Vertical <b>{y}%</b></span><input type="range" min="0" max="100" value={y} onChange={(event) => update('y', event.target.value)} /></label>
       <button type="button" onClick={() => onChange((current) => ({ ...current, _imageAdjustments: { ...(current._imageAdjustments || {}), [path]: { ...(current._imageAdjustments?.[path] || {}), [device]: { zoom: 100, x: 50, y: 50, fit: 'contain' } } } }))}><RotateCcw /> Reset {device}</button>
     </div>
-    <label><ImagePlus /> {uploading === path ? 'Uploading…' : 'Replace image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploading === path} onChange={onUpload(path)} /></label>
+    <div className="admin-device-image-uploads">
+      <label><ImagePlus /> {uploading === `${path}:desktop` ? 'Uploading…' : 'Replace desktop image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'desktop')} /></label>
+      <label><ImagePlus /> {uploading === `${path}:mobile` ? 'Uploading…' : mobileImage ? 'Replace mobile image (different)' : 'Use a different mobile image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'mobile')} /></label>
+    </div>
+    <small className="admin-image-help">Desktop and mobile can use two different photos. Mobile uses the desktop photo until you upload a different one.</small>
   </div>;
 }
 
@@ -846,10 +852,10 @@ function WebsiteContent({ onStartGuide }) {
     } catch (error) { setStatus(error.message); }
     finally { setSaving(false); }
   };
-  const upload = (path) => async (event) => {
+  const upload = (path, device = 'desktop') => async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setUploading(path);
+    setUploading(`${path}:${device}`);
     try {
       const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
       const result = await api('/admin/content-images', {
@@ -857,8 +863,10 @@ function WebsiteContent({ onStartGuide }) {
         body: JSON.stringify({ filename: file.name, dataUrl }),
         signal: AbortSignal.timeout(60000)
       });
-      setContent((current) => writeContentPath(current, path, result.imageUrl));
-      setStatus('Image uploaded. Save or publish to keep the change.');
+      setContent((current) => device === 'mobile'
+        ? { ...current, _mobileImages: { ...(current._mobileImages || {}), [path]: result.imageUrl } }
+        : writeContentPath(current, path, result.imageUrl));
+      setStatus(`${device === 'mobile' ? 'Mobile' : 'Desktop'} image uploaded. Save or publish to keep the change.`);
     } catch (error) { setStatus(error.message); }
     finally { setUploading(''); event.target.value = ''; }
   };

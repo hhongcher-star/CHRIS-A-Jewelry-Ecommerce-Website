@@ -75,6 +75,16 @@ function mergeSiteContent(fallback, saved) {
   }).concat(Object.entries(saved).filter(([key]) => !(key in fallback))));
 }
 
+function ResponsiveContentImage({ content, path, src, className = '', ...props }) {
+  const mobileSrc = content?._mobileImages?.[path];
+  const desktopClass = `${className} cms-image-desktop${mobileSrc ? ' has-mobile' : ''}`.trim();
+  const mobileClass = `${className} cms-image-mobile`.trim();
+  return <>
+    <img className={desktopClass} src={src} {...props} />
+    {mobileSrc && <img className={mobileClass} src={mobileSrc} {...props} />}
+  </>;
+}
+
 function useSiteContent(page, fallback) {
   const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
   const previewKey = `chrisea-cms-preview-${page}`;
@@ -550,14 +560,14 @@ function AboutPage() {
             <span className="about-gold-line" />
             <p>{hero.intro}</p>
           </div>
-          <div className="about-hero-image"><img src={hero.image} alt={hero.imageAlt} /></div>
+          <div className="about-hero-image"><ResponsiveContentImage content={content} path="hero.image" src={hero.image} alt={hero.imageAlt} /></div>
           <span className="about-hero-index">Est. 2026 · Malaysia</span>
         </section>
 
         <section className="about-origin section-pad">
           <div className="about-origin-art">
-            <img className="about-origin-main" src={story.mainImage} alt="CHRISÉA pearl jewellery styling" />
-            <img className="about-origin-detail" src={story.detailImage} alt="CHRISÉA jewellery detail" />
+            <ResponsiveContentImage content={content} path="story.mainImage" className="about-origin-main" src={story.mainImage} alt="CHRISÉA pearl jewellery styling" />
+            <ResponsiveContentImage content={content} path="story.detailImage" className="about-origin-detail" src={story.detailImage} alt="CHRISÉA jewellery detail" />
             <div className="about-origin-mark">C<span>✦</span></div>
           </div>
           <div className="about-origin-copy">
@@ -586,7 +596,7 @@ function AboutPage() {
         </section>
 
         <section className="about-cta">
-          <img src={cta.image} alt="CHRISÉA jewellery collection" />
+          <ResponsiveContentImage content={content} path="cta.image" src={cta.image} alt="CHRISÉA jewellery collection" />
           <div className="about-cta-shade" />
           <div className="about-cta-copy"><p>{cta.eyebrow}</p><h2>{cta.title}</h2><a className="button button-outline" href={cta.buttonHref}>{cta.buttonLabel}<ArrowRight size={15} /></a></div>
         </section>
@@ -600,10 +610,10 @@ const promotionFallback = [
   { id: 'signature-edit', active: true, eyebrow: 'The signature edit', title: 'A little something, just for you.', description: 'Discover handpicked pieces made for gifting, keeping and every meaningful moment between.', buttonLabel: 'Shop the edit', buttonHref: '/shop#sale-favourites', image: 'https://images.unsplash.com/photo-1578632297758-3a6c6de14be8?auto=format&fit=crop&w=2400&q=85', imageAlt: 'Gold and silver rings on a red velvet jewellery box' },
 ];
 
-function ShopPromotionSlider({ content }) {
+function ShopPromotionSlider({ content, mobileImages = {} }) {
   const [promotions, setPromotions] = useState(promotionFallback);
   const [active, setActive] = useState(0);
-  const cmsPromotions = Array.isArray(content) ? content.map((promotion, index) => ({ ...promotionFallback[0], ...promotion, id: `website-content-promotion-${index + 1}` })) : [];
+  const cmsPromotions = Array.isArray(content) ? content.map((promotion, index) => ({ ...promotionFallback[0], ...promotion, mobileImage: mobileImages[`promotion.${index}.image`] || '', id: `website-content-promotion-${index + 1}` })) : [];
   const visiblePromotions = (cmsPromotions.length ? cmsPromotions : promotions).filter((promotion) => promotion.active !== false);
 
   useEffect(() => {
@@ -632,7 +642,7 @@ function ShopPromotionSlider({ content }) {
   return (
     <section className="shop-promotion" aria-roledescription="carousel" aria-label="Current promotions">
       <div className="shop-promotion-media">
-        {visiblePromotions.map((promotion, index) => <img className={index === safeActive ? 'is-active' : ''} src={promotion.image} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} key={promotion.id} />)}
+        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-image-desktop${promotion.mobileImage ? ' has-mobile' : ''}`} src={promotion.image} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />{promotion.mobileImage && <img className={`${index === safeActive ? 'is-active ' : ''}cms-image-mobile`} src={promotion.mobileImage} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />}</React.Fragment>)}
       </div>
       <div className="shop-promotion-shade" />
       <div className="shop-promotion-copy" key={current.id}>
@@ -721,7 +731,7 @@ function ShopPage() {
     <div className="page-shell shop-page">
       <Header />
       <main>
-        <ShopPromotionSlider content={shop.promotion} />
+        <ShopPromotionSlider content={shop.promotion} mobileImages={shop._mobileImages} />
         <SaleFavorites products={favouriteProducts} content={favourites} />
         <section className="shop-catalog section-pad" id="categories" aria-label="All jewellery">
           <header className="shop-catalog-heading"><p>{catalogue.eyebrow}</p><h2>{catalogue.title}</h2></header>
@@ -906,7 +916,7 @@ function ReviewsPage() {
       <Header />
       <main>
         <section className="reviews-hero">
-          <img src={reviewsContent.hero.image} alt="Gold stud earrings presented in a red jewellery box" />
+          <ResponsiveContentImage content={reviewsContent} path="hero.image" src={reviewsContent.hero.image} alt="Gold stud earrings presented in a red jewellery box" />
           <div className="reviews-hero-shade" />
           <div className="reviews-hero-copy"><p>{reviewsContent.hero.eyebrow}</p><h1>{reviewsContent.hero.title}</h1><span /><p>{reviewsContent.hero.description}</p></div>
         </section>
@@ -924,7 +934,7 @@ function ReviewsPage() {
 
         <section className="reviews-social section-pad">
           <div className="reviews-social-copy"><p>{reviewsContent.social.eyebrow}</p><h2>{reviewsContent.social.title}</h2><span /><p>{reviewsContent.social.description}</p><a href="/#contact">Tag @chrisea.jewelry <ArrowRight size={14} /></a></div>
-          <div className="reviews-social-grid"><img src={reviewsContent.social.image1} alt="Gold earrings styled by the community" /><img src={reviewsContent.social.image2} alt="Gold ring styling detail" /><img src={reviewsContent.social.image3} alt="Fine necklace styling detail" /></div>
+          <div className="reviews-social-grid"><ResponsiveContentImage content={reviewsContent} path="social.image1" src={reviewsContent.social.image1} alt="Gold earrings styled by the community" /><ResponsiveContentImage content={reviewsContent} path="social.image2" src={reviewsContent.social.image2} alt="Gold ring styling detail" /><ResponsiveContentImage content={reviewsContent} path="social.image3" src={reviewsContent.social.image3} alt="Fine necklace styling detail" /></div>
         </section>
 
         <section className="reviews-cta"><div><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a href="mailto:hello@chrisea.com">{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a></div></section>
@@ -1034,7 +1044,7 @@ function CartPage() {
     <div className="page-shell cart-page">
       <Header />
       <main>
-        <section className="cart-hero"><img src={cartContent.hero.image} alt="CHRISÉA shopping cart banner" /><div className="cart-hero-shade" /><div><p>{cartContent.hero.eyebrow}</p><h1>{cartContent.hero.title}</h1><span /><p>{cartContent.hero.description}</p></div></section>
+        <section className="cart-hero"><ResponsiveContentImage content={cartContent} path="hero.image" src={cartContent.hero.image} alt="CHRISÉA shopping cart banner" /><div className="cart-hero-shade" /><div><p>{cartContent.hero.eyebrow}</p><h1>{cartContent.hero.title}</h1><span /><p>{cartContent.hero.description}</p></div></section>
         <section className="cart-layout section-pad">
           <div className="cart-main">
             {cartItems.length ? <>
@@ -1285,12 +1295,12 @@ function App() {
       <Header />
 
       <main>
-        <HeroSlider content={home.hero} imageAdjustments={home._imageAdjustments} />
+        <HeroSlider content={home.hero} imageAdjustments={home._imageAdjustments} mobileImages={home._mobileImages} />
 
         <section className="category-grid section-pad" id="categories" aria-label="Shop by category">
           {homepageCategories.map((category) => (
             <a className="category-card" href={`/shop?category=${category.name}`} key={category.name}>
-              <div className="image-wrap"><img src={category.image} alt={`${category.name} collection`} /></div>
+              <div className="image-wrap"><ResponsiveContentImage content={home} path={`categories.${homepageCategories.indexOf(category)}.image`} src={category.image} alt={`${category.name} collection`} /></div>
               <h2>{category.name}</h2><span>Explore <ArrowRight size={13} /></span>
             </a>
           ))}
@@ -1349,8 +1359,8 @@ function App() {
             <p className="story-signoff"><span />Every detail tells a story.</p>
           </div>
           <div className="story-collage">
-            <img className="story-main" src={home.story.mainImage} alt="Pearl and turquoise bracelet styled on the wrist" />
-            <img className="story-detail" src={home.story.detailImage} alt="Natural pearl bracelet in a warm vintage setting" />
+            <ResponsiveContentImage content={home} path="story.mainImage" className="story-main" src={home.story.mainImage} alt="Pearl and turquoise bracelet styled on the wrist" />
+            <ResponsiveContentImage content={home} path="story.detailImage" className="story-detail" src={home.story.detailImage} alt="Natural pearl bracelet in a warm vintage setting" />
             <div className="story-seal">Designed<br />for<br /><b>✦</b><br />every<br />chapter</div>
           </div>
         </section>
