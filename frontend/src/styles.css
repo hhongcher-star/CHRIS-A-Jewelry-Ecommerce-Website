@@ -257,8 +257,10 @@ img { display: block; width: 100%; }
 .story-signoff span { width: 28px; height: 1px; margin: 0 0 12px; display: block; background: rgba(248,243,233,.75); }
 .text-link { display: inline-flex; gap: 10px; align-items: center; margin-top: 18px; border-bottom: 1px solid currentColor; padding-bottom: 5px; text-transform: uppercase; letter-spacing: .15em; font-size: 9px; font-weight: 600; }
 .story-collage { min-height: 0; height: 650px; position: relative; overflow: hidden; }
-.story-main { width: 78%; height: 100%; object-fit: cover; object-position: center; position: absolute; left: 0; top: 0; z-index: 1; }
-.story-detail { width: 43%; height: 66%; object-fit: cover; object-position: center; position: absolute; right: 0; bottom: 0; z-index: 2; border: 10px solid var(--burgundy); }
+.story-main-frame { width: 78%; height: 100%; position: absolute; left: 0; top: 0; z-index: 1; overflow: hidden; }
+.story-detail-frame { width: 43%; height: 66%; position: absolute; right: 0; bottom: 0; z-index: 2; overflow: hidden; border: 10px solid var(--burgundy); }
+.story-main,
+.story-detail { width: 100%; height: 100%; object-fit: cover; object-position: center; }
 .story-seal { display: none; }
 .story-seal b { color: var(--burgundy); }
 
@@ -827,9 +829,11 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .story-copy { padding: 0; }
   .story-copy h2 { font-size: 52px; }
   .story-signoff { margin-top: 38px; }
-  .story-collage { height: 540px; min-height: 540px; margin-top: 35px; display: block; overflow: hidden; }
-  .story-main { width: 82%; height: 520px; position: absolute; left: 0; top: 0; z-index: 1; object-fit: cover; object-position: center; }
-  .story-detail { width: 52%; height: 310px; position: absolute; right: 0; bottom: 0; z-index: 2; border: 7px solid var(--burgundy); object-fit: cover; object-position: center; }
+  .story-collage { width: calc(100% + 14px); height: 540px; min-height: 540px; margin: 35px -7px 0; display: block; overflow: hidden; }
+  .story-main-frame { width: 76%; height: 100%; left: 0; top: 0; }
+  .story-detail-frame { width: 48%; height: 52%; right: 0; bottom: 0; border-width: 7px; }
+  .story-main,
+  .story-detail { width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .story-seal { width: 90px; height: 90px; right: 0; top: 5px; z-index: 3; font-size: 6px; }
   .promise { padding-top: 55px; padding-bottom: 60px; }
   .promise-heading { text-align: left; }

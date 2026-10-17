@@ -1457,8 +1457,12 @@ function App() {
             <p className="story-signoff"><span />Every detail tells a story.</p>
           </div>
           <div className="story-collage">
-            <ResponsiveContentImage content={home} path="story.mainImage" className="story-main" src={home.story.mainImage} alt="Pearl and turquoise bracelet styled on the wrist" />
-            <ResponsiveContentImage content={home} path="story.detailImage" className="story-detail" src={home.story.detailImage} alt="Natural pearl bracelet in a warm vintage setting" />
+            <div className="story-main-frame">
+              <ResponsiveContentImage content={home} path="story.mainImage" className="story-main" src={home.story.mainImage} alt="Pearl and turquoise bracelet styled on the wrist" />
+            </div>
+            <div className="story-detail-frame">
+              <ResponsiveContentImage content={home} path="story.detailImage" className="story-detail" src={home.story.detailImage} alt="Natural pearl bracelet in a warm vintage setting" />
+            </div>
             <div className="story-seal">Designed<br />for<br /><b>✦</b><br />every<br />chapter</div>
           </div>
         </section>
