@@ -21,10 +21,12 @@
 main > section:not(.hero-slider):not(.about-hero):not(.reviews-hero):not(.cart-hero) { content-visibility: auto; contain-intrinsic-size: auto 700px; }
 img { content-visibility: auto; }
 img.cms-image-mobile { display: none; }
+img.cms-adjustable-image { object-fit: var(--cms-desktop-fit, cover); object-position: var(--cms-desktop-position, 50% 50%); transform: scale(var(--cms-desktop-zoom, 1)); transform-origin: var(--cms-desktop-position, 50% 50%); }
 
 @media (max-width: 760px) {
   img.cms-image-desktop.has-mobile { display: none; }
   img.cms-image-mobile { display: block; }
+  img.cms-adjustable-image { object-fit: var(--cms-mobile-fit, var(--cms-desktop-fit, cover)); object-position: var(--cms-mobile-position, var(--cms-desktop-position, 50% 50%)); transform: scale(var(--cms-mobile-zoom, var(--cms-desktop-zoom, 1))); transform-origin: var(--cms-mobile-position, var(--cms-desktop-position, 50% 50%)); }
 }
 
 @keyframes route-enter {

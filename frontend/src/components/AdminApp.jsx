@@ -835,6 +835,7 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
 
 function WebsiteContent({ onStartGuide }) {
   const previewRef = useRef(null);
+  const savingRef = useRef(false);
   const [page, setPage] = useState('home');
   const [content, setContent] = useState(cloneContent(contentPages.home.defaults));
   const [section, setSection] = useState('hero');
@@ -906,13 +907,15 @@ function WebsiteContent({ onStartGuide }) {
   }, [page, content]);
 
   const save = async (publish = false) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
-      await api(`/admin/content/${page}`, { method: 'PUT', body: JSON.stringify({ content }) });
-      if (publish) await api(`/admin/content/${page}/publish`, { method: 'POST' });
+      if (publish) await api(`/admin/content/${page}/publish`, { method: 'POST', body: JSON.stringify({ content }) });
+      else await api(`/admin/content/${page}`, { method: 'PUT', body: JSON.stringify({ content }) });
       setStatus(publish ? 'Published — the storefront is now updated.' : 'Draft saved.');
     } catch (error) { setStatus(error.message); }
-    finally { setSaving(false); }
+    finally { savingRef.current = false; setSaving(false); }
   };
   const upload = (path, device = 'desktop') => async (event) => {
     const file = event.target.files?.[0];

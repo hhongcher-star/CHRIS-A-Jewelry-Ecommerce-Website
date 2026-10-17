@@ -78,11 +78,26 @@ function mergeSiteContent(fallback, saved) {
 
 function ResponsiveContentImage({ content, path, src, className = '', ...props }) {
   const mobileSrc = content?._mobileImages?.[path];
-  const desktopClass = `${className} cms-image-desktop${mobileSrc ? ' has-mobile' : ''}`.trim();
-  const mobileClass = `${className} cms-image-mobile`.trim();
+  const saved = content?._imageAdjustments?.[path] || {};
+  const desktop = saved.desktop || saved;
+  const mobile = saved.mobile || {};
+  const desktopX = Number(desktop.x ?? 50);
+  const desktopY = Number(desktop.y ?? 50);
+  const mobileX = Number(mobile.x ?? desktop.x ?? 50);
+  const mobileY = Number(mobile.y ?? desktop.y ?? 50);
+  const adjustmentStyle = {
+    '--cms-desktop-fit': desktop.fit || 'cover',
+    '--cms-desktop-position': `${desktopX}% ${desktopY}%`,
+    '--cms-desktop-zoom': Number(desktop.zoom || 100) / 100,
+    '--cms-mobile-fit': mobile.fit || desktop.fit || 'cover',
+    '--cms-mobile-position': `${mobileX}% ${mobileY}%`,
+    '--cms-mobile-zoom': Number(mobile.zoom || desktop.zoom || 100) / 100,
+  };
+  const desktopClass = `${className} cms-adjustable-image cms-image-desktop${mobileSrc ? ' has-mobile' : ''}`.trim();
+  const mobileClass = `${className} cms-adjustable-image cms-image-mobile`.trim();
   return <>
-    <img className={desktopClass} src={src} {...props} />
-    {mobileSrc && <img className={mobileClass} src={mobileSrc} {...props} />}
+    <img className={desktopClass} src={src} style={adjustmentStyle} {...props} />
+    {mobileSrc && <img className={mobileClass} src={mobileSrc} style={adjustmentStyle} {...props} />}
   </>;
 }
 
@@ -611,10 +626,20 @@ const promotionFallback = [
   { id: 'signature-edit', active: true, eyebrow: 'The signature edit', title: 'A little something, just for you.', description: 'Discover handpicked pieces made for gifting, keeping and every meaningful moment between.', buttonLabel: 'Shop the edit', buttonHref: '/shop#sale-favourites', image: 'https://images.unsplash.com/photo-1578632297758-3a6c6de14be8?auto=format&fit=crop&w=2400&q=85', imageAlt: 'Gold and silver rings on a red velvet jewellery box' },
 ];
 
-function ShopPromotionSlider({ content, mobileImages = {} }) {
+function ShopPromotionSlider({ content, mobileImages = {}, imageAdjustments = {} }) {
   const [promotions, setPromotions] = useState(promotionFallback);
   const [active, setActive] = useState(0);
-  const cmsPromotions = Array.isArray(content) ? content.map((promotion, index) => ({ ...promotionFallback[0], ...promotion, mobileImage: mobileImages[`promotion.${index}.image`] || '', id: `website-content-promotion-${index + 1}` })) : [];
+  const cmsPromotions = Array.isArray(content) ? content.map((promotion, index) => {
+    const path = `promotion.${index}.image`;
+    const saved = imageAdjustments[path] || {};
+    const desktop = saved.desktop || saved;
+    const mobile = saved.mobile || {};
+    const desktopX = Number(desktop.x ?? 50);
+    const desktopY = Number(desktop.y ?? 50);
+    const mobileX = Number(mobile.x ?? desktop.x ?? 50);
+    const mobileY = Number(mobile.y ?? desktop.y ?? 50);
+    return { ...promotionFallback[0], ...promotion, mobileImage: mobileImages[path] || '', adjustmentStyle: { '--cms-desktop-fit': desktop.fit || 'cover', '--cms-desktop-position': `${desktopX}% ${desktopY}%`, '--cms-desktop-zoom': Number(desktop.zoom || 100) / 100, '--cms-mobile-fit': mobile.fit || desktop.fit || 'cover', '--cms-mobile-position': `${mobileX}% ${mobileY}%`, '--cms-mobile-zoom': Number(mobile.zoom || desktop.zoom || 100) / 100 }, id: `website-content-promotion-${index + 1}` };
+  }) : [];
   const visiblePromotions = (cmsPromotions.length ? cmsPromotions : promotions).filter((promotion) => promotion.active !== false);
 
   useEffect(() => {
@@ -643,7 +668,7 @@ function ShopPromotionSlider({ content, mobileImages = {} }) {
   return (
     <section className="shop-promotion" aria-roledescription="carousel" aria-label="Current promotions">
       <div className="shop-promotion-media">
-        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-image-desktop${promotion.mobileImage ? ' has-mobile' : ''}`} src={promotion.image} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />{promotion.mobileImage && <img className={`${index === safeActive ? 'is-active ' : ''}cms-image-mobile`} src={promotion.mobileImage} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />}</React.Fragment>)}
+        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-desktop${promotion.mobileImage ? ' has-mobile' : ''}`} src={promotion.image} style={promotion.adjustmentStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />{promotion.mobileImage && <img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-mobile`} src={promotion.mobileImage} style={promotion.adjustmentStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />}</React.Fragment>)}
       </div>
       <div className="shop-promotion-shade" />
       <div className="shop-promotion-copy" key={current.id}>
@@ -732,7 +757,7 @@ function ShopPage() {
     <div className="page-shell shop-page">
       <Header />
       <main>
-        <ShopPromotionSlider content={shop.promotion} mobileImages={shop._mobileImages} />
+        <ShopPromotionSlider content={shop.promotion} mobileImages={shop._mobileImages} imageAdjustments={shop._imageAdjustments} />
         <SaleFavorites products={favouriteProducts} content={favourites} />
         <section className="shop-catalog section-pad" id="categories" aria-label="All jewellery">
           <header className="shop-catalog-heading"><p>{catalogue.eyebrow}</p><h2>{catalogue.title}</h2></header>

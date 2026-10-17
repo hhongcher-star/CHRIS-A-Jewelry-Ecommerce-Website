@@ -46,6 +46,19 @@ export async function saveContentDraft(req, res) {
 
 export async function publishContent(req, res) {
   const key = pageKey(req);
+  const suppliedContent = req.body?.content;
+  if (suppliedContent !== undefined) {
+    const parsed = contentSchema.safeParse(suppliedContent);
+    if (!parsed.success) throw new AppError(400, 'INVALID_CONTENT', 'The page content is invalid.');
+    const json = JSON.stringify(parsed.data);
+    await pool.query(`
+      INSERT INTO site_content (page_key, draft_content, published_content, published_at, updated_by)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)
+      ON DUPLICATE KEY UPDATE draft_content = VALUES(draft_content), published_content = VALUES(published_content), published_at = CURRENT_TIMESTAMP, updated_by = VALUES(updated_by), updated_at = CURRENT_TIMESTAMP
+    `, [key, json, json, req.user.id]);
+    res.json({ success: true, data: { page: key, published: true } });
+    return;
+  }
   const [result] = await pool.query(`
     UPDATE site_content
     SET published_content = draft_content, published_at = CURRENT_TIMESTAMP, updated_by = ?
