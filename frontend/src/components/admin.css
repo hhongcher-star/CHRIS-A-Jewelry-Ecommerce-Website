@@ -1218,3 +1218,67 @@
 .admin-confirm-actions button { min-height: 50px; border: 1px solid #430411; background: transparent; color: #430411; cursor: pointer; font: 700 9px 'Montserrat', sans-serif; letter-spacing: .13em; text-transform: uppercase; }
 .admin-confirm-actions button.danger { background: #430411; color: #f8f3e9; }
 @media (max-width: 520px) { .admin-confirm-backdrop { padding: 14px; } .admin-confirm-modal { padding: 38px 22px 26px; } .admin-confirm-modal h2 { font-size: 30px; } .admin-confirm-actions { grid-template-columns: 1fr; } }
+
+/* Complete phone layout for the administrator workspace. */
+@media (max-width: 760px) {
+  .admin-main { width: 100%; overflow-x: hidden; }
+  .admin-topbar { height: 62px; padding: 0 14px; position: sticky; z-index: 90; top: 0; background: rgba(248,243,233,.96); backdrop-filter: blur(12px); }
+  .admin-topbar > button { width: 40px; height: 40px; flex: 0 0 40px; }
+  .admin-notification-panel, .admin-profile-menu { width: calc(100vw - 28px); max-width: none; right: 14px; top: 56px; }
+  .admin-content, .admin-content-add { padding: 24px 14px 54px; }
+  .admin-welcome, .admin-page-heading, .admin-add-header, .admin-detail-heading { margin-bottom: 23px; align-items: stretch; flex-direction: column; gap: 17px; }
+  .admin-welcome h1, .admin-page-heading h1 { font-size: clamp(36px, 11vw, 44px); line-height: .98; }
+  .admin-welcome > div > span, .admin-page-heading > div > span { font-size: 15px; line-height: 1.35; }
+  .admin-page-actions, .admin-heading-tools { width: 100%; display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .admin-page-actions button, .admin-heading-tools button, .admin-page-guide { width: 100%; min-height: 46px; }
+  .admin-stats, .admin-product-summary, .admin-order-summary, .admin-promotion-summary { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+  .admin-stats article, .admin-product-summary article, .admin-order-summary article, .admin-promotion-summary article { min-height: 104px; padding: 15px 13px; gap: 10px; }
+  .admin-stats article > svg { top: 14px; left: 13px; }
+  .admin-stats article > div { padding-left: 38px; }
+  .admin-stats article strong, .admin-product-summary strong, .admin-order-summary strong, .admin-promotion-summary strong { font-size: 26px; }
+  .admin-card, .admin-catalogue-panel, .admin-orders-panel, .admin-promotion-ledger, .admin-content-editor, .admin-visual-controls { min-width: 0; }
+  .admin-card > header, .admin-catalogue-head, .admin-orders-panel > header, .admin-promotion-ledger > header, .admin-content-editor > header { min-height: 0; padding: 17px 16px; align-items: flex-start; flex-direction: column; gap: 7px; }
+  .admin-toolbar, .admin-product-toolbar, .admin-order-toolbar { min-height: 0; padding: 12px; align-items: stretch; flex-direction: column; gap: 9px; }
+  .admin-toolbar > label, .admin-toolbar > select, .admin-product-filters { width: 100%; max-width: none; }
+  .admin-product-filters { display: grid; grid-template-columns: 1fr 1fr; }
+  .admin-product-filters > svg { display: none; }
+  .admin-product-filters select { width: 100%; }
+  .admin-table-wrap { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+  .admin-table-wrap table { min-width: 760px; }
+  .admin-table-wrap th { padding: 0 13px; }
+  .admin-table-wrap td { height: 68px; padding: 9px 13px; }
+  .admin-promotion-ledger article { padding: 16px; }
+  .admin-promo-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr 44px; }
+  .admin-promo-actions button { min-height: 42px; justify-content: center; }
+  .admin-content-tabs { margin: 0 -14px; padding: 8px 14px; border-right: 0; border-left: 0; }
+  .admin-content-tabs button { min-height: 42px; padding: 0 16px; }
+  .admin-site-preview { grid-template-rows: auto 540px; }
+  .admin-site-preview > header { min-height: 0; padding: 11px; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .admin-site-preview > header > span { grid-column: 1 / -1; }
+  .admin-site-preview > header > a { font-size: 8px; }
+  .admin-site-preview iframe, .admin-site-preview.is-mobile iframe { height: 540px; }
+  .admin-preview-devices button { padding: 0 10px; }
+  .admin-content-product-choice > div { grid-template-columns: 1fr 1fr; }
+  .admin-content-picker-backdrop { padding: 0; align-items: end; }
+  .admin-content-picker { width: 100%; max-height: 94dvh; padding: 21px 16px; }
+  .admin-content-picker > header h2 { margin-bottom: 12px; font-size: 31px; }
+  .admin-content-picker > footer { align-items: stretch; flex-direction: column; gap: 12px; }
+  .admin-content-picker > footer button { width: 100%; }
+  .admin-modal-backdrop, .admin-promo-modal-backdrop, .admin-category-backdrop, .admin-trash-backdrop, .admin-receipt-backdrop { padding: 0; align-items: end; }
+  .admin-product-modal, .admin-promo-modal, .admin-category-modal, .admin-trash-modal, .admin-receipt-modal, .admin-store-receipt-modal { width: 100%; max-height: 94dvh; border-right: 0; border-left: 0; }
+  .admin-promo-modal > header, .admin-trash-modal > header { padding: 23px 19px; }
+  .admin-promo-modal .admin-promotion-form, .admin-trash-list { padding: 20px 19px; }
+}
+
+@media (max-width: 420px) {
+  .admin-content, .admin-content-add { padding-right: 11px; padding-left: 11px; }
+  .admin-stats, .admin-product-summary, .admin-order-summary, .admin-promotion-summary { grid-template-columns: 1fr 1fr; }
+  .admin-stats article, .admin-product-summary article, .admin-order-summary article, .admin-promotion-summary article { min-height: 96px; padding: 12px 10px; }
+  .admin-stats article > div { padding-left: 33px; }
+  .admin-stats article strong, .admin-product-summary strong, .admin-order-summary strong, .admin-promotion-summary strong { font-size: 23px; }
+  .admin-content-tabs { margin-right: -11px; margin-left: -11px; padding-right: 11px; padding-left: 11px; }
+  .admin-device-image-card { padding: 11px; }
+  .admin-site-preview > header > span { font-size: 8px; }
+  .admin-preview-stage, .admin-site-preview.is-mobile .admin-preview-stage { padding: 0; }
+  .admin-promo-actions { grid-template-columns: 1fr 1fr 40px; }
+}
