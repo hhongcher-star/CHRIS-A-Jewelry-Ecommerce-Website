@@ -2099,6 +2099,7 @@ body,
 .cart-customer-fields label small { float: right; color: rgba(67,4,17,.5); font-size: 8px; }
 .cart-customer-fields input,
 .cart-customer-fields select { width: 100%; height: 43px; margin-top: 6px; padding: 0 11px; border: 1px solid rgba(67,4,17,.2); outline: 0; background: rgba(255,255,255,.24); color: var(--burgundy); font: 14px 'Montserrat', sans-serif; }
+.cart-payment-method { width: 100%; height: 43px; margin-top: 6px; padding: 0 11px; border: 1px solid rgba(67,4,17,.2); display: flex; align-items: center; background: rgba(255,255,255,.24); color: var(--burgundy); font: 14px 'Montserrat', sans-serif; letter-spacing: 0; text-transform: none; }
 .cart-customer-fields input:focus,
 .cart-customer-fields select:focus { border-color: var(--burgundy); }
 .cart-checkout-error { margin: 10px 0; color: #a1243b; font: 600 11px/1.5 'Montserrat', sans-serif; }
