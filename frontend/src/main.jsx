@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowRight,
@@ -403,14 +404,14 @@ function Header() {
           <a className="icon-button bag-button" href="/cart" aria-label={`Shopping bag with ${cartCount} items`}><ShoppingBag /><b>{cartCount}</b></a>
         </div>
       </header>
-      <div className={`mobile-menu ${open ? 'is-open' : ''}`} aria-hidden={!open}>
+      {createPortal(<div className={`mobile-menu ${open ? 'is-open' : ''}`} aria-hidden={!open}>
         <button className="icon-button menu-close" onClick={close} aria-label="Close menu"><X /></button>
         <BrandMark light />
         <button className="mobile-search-trigger" type="button" onClick={() => { close(); setSearchOpen(true); }}><Search size={18} /> Search jewellery</button>
         {mobileNavigation.map((item) => (
           <a href={item.href} onClick={close} key={item.label}>{item.label}</a>
         ))}
-      </div>
+      </div>, document.body)}
       {searchOpen && <div className="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-title" onMouseDown={(event) => event.target === event.currentTarget && setSearchOpen(false)}>
         <div className="search-panel">
           <button className="search-close" type="button" onClick={() => setSearchOpen(false)} aria-label="Close search"><X /></button>
