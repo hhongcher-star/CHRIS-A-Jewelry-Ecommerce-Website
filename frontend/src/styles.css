@@ -770,10 +770,13 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .product-card { min-width: 77vw; scroll-snap-align: start; }
   .quick-add { opacity: 1; transform: none; }
   .editorial-edit { height: auto; min-height: 0; padding: 50px 24px; grid-template-columns: 1fr; gap: 14px; }
-  .editorial-copy { padding: 0 0 30px; }
+  .editorial-copy { min-height: 0; padding: 0 0 24px; justify-content: flex-start; }
   .editorial-copy h2 { font-size: clamp(48px, 12vw, 66px); white-space: normal; }
-  .editorial-copy h3 { font-size: 34px; }
-  .editorial-signoff { margin-top: 38px; }
+  .editorial-copy h3 { margin: 9px 0 15px; font-size: 34px; }
+  .editorial-copy > p:not(.editorial-label):not(.editorial-signoff) { margin-bottom: 18px; }
+  .editorial-copy > p:not(.editorial-label):not(.editorial-signoff):empty { display: none; }
+  .editorial-cta { margin: 0; }
+  .editorial-signoff { margin-top: 24px; padding-top: 18px; }
   .editorial-card--main { height: 360px; }
   .editorial-stack { grid-template-columns: 1fr 1fr; grid-template-rows: none; }
   .editorial-stack .editorial-card { height: auto; aspect-ratio: .8; }
