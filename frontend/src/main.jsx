@@ -1000,7 +1000,17 @@ function CartPage() {
       const result = await response.json();
       if (!result.data?.valid) {
         setDiscount(0);
-        setPromoMessage(result.data?.reason === 'FIRST_ORDER_ONLY' ? 'This promo code is for first-time buyers only' : result.data?.reason === 'FIRST_ORDER_DETAILS_REQUIRED' ? 'Enter your email or phone number first to verify this first-order offer' : 'Promo code is invalid, expired, or does not meet the minimum spend');
+        const promoReasons = {
+          INVALID_CODE: 'This promo code does not exist. Please check the spelling and try again.',
+          INACTIVE: 'This promo code is currently inactive.',
+          NOT_STARTED: `This promo code is not available yet${result.data?.startsAt ? ` — it starts ${new Date(result.data.startsAt).toLocaleString('en-MY')}` : ''}.`,
+          EXPIRED: 'This promo code has expired.',
+          USAGE_LIMIT_REACHED: 'This promo code has reached its usage limit.',
+          MINIMUM_SPEND: `Spend another RM ${Number(result.data?.shortfall || 0).toFixed(2)} to use this promo code (minimum RM ${Number(result.data?.minimumSpend || 0).toFixed(2)}).`,
+          FIRST_ORDER_ONLY: 'This promo code is for first-time buyers only. Cancelled or rejected orders do not affect your eligibility.',
+          FIRST_ORDER_DETAILS_REQUIRED: 'Enter your email or phone number first so we can check your first-order eligibility.'
+        };
+        setPromoMessage(promoReasons[result.data?.reason] || 'This promo code cannot be applied. Please check the offer requirements.');
         return;
       }
       setDiscount(Number(result.data.discountTotal) / Math.max(subtotal, 1));
