@@ -243,19 +243,30 @@ function AdminTour({ item, step, total, onBack, onNext, onClose }) {
   const manuallyPositionedRef = useRef(false);
   const [cardPosition, setCardPosition] = useState({ right: 30, bottom: 30 });
   const [cardInFront, setCardInFront] = useState(true);
+  const [cardDock, setCardDock] = useState(null);
   useEffect(() => {
     manuallyPositionedRef.current = false;
     const positionCard = () => {
-      if (manuallyPositionedRef.current) return;
-      const target = document.querySelector(item.selector);
       const card = cardRef.current;
-      if (!target || !card) return;
-      const targetBox = target.getBoundingClientRect();
+      if (!card) return;
       const cardBox = card.getBoundingClientRect();
       const gap = 24;
       const edge = window.innerWidth > 760 ? 256 : 16;
       let left;
       let top;
+      if (cardDock) {
+        left = window.innerWidth > 760 ? window.innerWidth - cardBox.width - 30 : 16;
+        top = cardDock === 'top' ? 16 : window.innerHeight - cardBox.height - 16;
+        setCardPosition({
+          left: Math.max(edge, Math.min(left, window.innerWidth - cardBox.width - 16)),
+          top: Math.max(16, Math.min(top, window.innerHeight - cardBox.height - 16)),
+        });
+        return;
+      }
+      if (manuallyPositionedRef.current) return;
+      const target = document.querySelector(item.selector);
+      if (!target) return;
+      const targetBox = target.getBoundingClientRect();
       if (targetBox.right + gap + cardBox.width <= window.innerWidth - 16) {
         left = targetBox.right + gap;
         top = targetBox.top + (targetBox.height - cardBox.height) / 2;
@@ -279,7 +290,7 @@ function AdminTour({ item, step, total, onBack, onNext, onClose }) {
     window.addEventListener('resize', positionCard);
     window.addEventListener('scroll', positionCard, true);
     return () => { window.cancelAnimationFrame(frame); window.clearTimeout(retry); window.removeEventListener('resize', positionCard); window.removeEventListener('scroll', positionCard, true); };
-  }, [item.selector, step]);
+  }, [item.selector, step, cardDock]);
   const startDrag = (event) => {
     if (event.button !== undefined && event.button !== 0) return;
     const box = cardRef.current?.getBoundingClientRect();
@@ -302,6 +313,13 @@ function AdminTour({ item, step, total, onBack, onNext, onClose }) {
     dragRef.current = null;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
   };
+  const swapCardPosition = () => {
+    const box = cardRef.current?.getBoundingClientRect();
+    const currentlyAtTop = cardDock === 'top' || (!cardDock && box && box.top + box.height / 2 < window.innerHeight / 2);
+    manuallyPositionedRef.current = false;
+    setCardDock(currentlyAtTop ? 'bottom' : 'top');
+    setCardInFront(true);
+  };
   useEffect(() => {
     setCardInFront(true);
     const target = document.querySelector(item.selector);
@@ -319,7 +337,7 @@ function AdminTour({ item, step, total, onBack, onNext, onClose }) {
       <button className="admin-tour-window-hint" type="button" onClick={() => setCardInFront((value) => !value)}>{cardInFront ? 'Click the highlighted area to view it in front' : 'Bring this tutorial window to front'}</button>
       <footer><button type="button" className="skip" onClick={onClose}><X /> Close</button><button type="button" className="back" disabled={step === 0} onClick={onBack}><ArrowLeft /> Back</button><button type="button" className="next" onClick={onNext}>{step === total - 1 ? 'Finish' : 'Next'} {step < total - 1 && <ArrowUpRight />}</button></footer>
     </section>
-  </div></>;
+  </div><button className="admin-tour-swap" type="button" onClick={swapCardPosition} aria-label={cardDock === 'bottom' ? 'Move tutorial to top' : 'Move tutorial to bottom'} title={cardDock === 'bottom' ? 'Move tutorial to top' : 'Move tutorial to bottom'}>{cardDock === 'bottom' ? <ChevronUp /> : <ChevronDown />}</button></>;
 }
 
 const money = (value) => `RM ${Number(value || 0).toFixed(2)}`;

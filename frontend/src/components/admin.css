@@ -1037,6 +1037,9 @@
 .admin-tour-card footer .next { border: 1px solid #430411; background: #430411 !important; color: #fbf7ef; box-shadow: 0 7px 18px rgba(67,4,17,.14); }
 .admin-tour-card footer button:hover:not(:disabled) { transform: translateY(-1px); }
 .admin-tour-card footer button:disabled { cursor: not-allowed; opacity: .35; }
+.admin-tour-swap { width: 52px; height: 52px; padding: 0; position: fixed; z-index: 660; right: 22px; bottom: 22px; border: 1px solid rgba(251,247,239,.55); border-radius: 50%; display: grid; place-items: center; background: #430411; color: #fbf7ef; cursor: pointer; box-shadow: 0 10px 30px rgba(20,0,5,.34); transition: transform .2s ease, background .2s ease; }
+.admin-tour-swap:hover { transform: translateY(-2px); background: #6d1325; }
+.admin-tour-swap svg { width: 22px; height: 22px; stroke-width: 1.5; }
 .admin-topbar > button[aria-label='Open quick guide'] { margin-left: auto; }
 .admin-topbar > button[aria-label='Notifications'] { margin-left: 0; }
 .admin-heading-tools { display: flex; align-items: center; gap: 18px; }
@@ -1059,6 +1062,7 @@
   .admin-tour-card > span { font-size: 12px; }
   .admin-tour-card footer { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
   .admin-tour-card footer button { padding: 0 7px; font-size: 7px; }
+  .admin-tour-swap { width: 48px; height: 48px; right: 12px; bottom: 12px; }
   .admin-heading-tools { width: 100%; align-items: flex-start; flex-direction: column-reverse; }
   .admin-page-guide { width: 100%; }
 }
