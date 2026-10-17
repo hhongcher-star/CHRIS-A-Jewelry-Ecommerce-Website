@@ -7,7 +7,7 @@ import { AppError } from '../errors/app-error.js';
 const checkoutSchema = z.object({
   customer: z.object({
     fullName: z.string().trim().min(2).max(150),
-    email: z.string().trim().toLowerCase().email().max(255),
+    email: z.string().trim().toLowerCase().email().max(255).optional().or(z.literal('')).default(''),
     phone: z.string().trim().min(7).max(30),
     addressLine1: z.string().trim().min(5).max(255),
     addressLine2: z.string().trim().max(255).optional().default(''),
@@ -56,13 +56,20 @@ export async function createOrder(req, res) {
     });
 
     const subtotal = lines.reduce((sum, item) => sum + item.lineTotal, 0);
-    const [users] = await connection.query('SELECT id, role FROM users WHERE email = ? LIMIT 1 FOR UPDATE', [checkout.customer.email]);
+    const normalizedPhone = checkout.customer.phone.replace(/\D/g, '');
+    const customerEmail = checkout.customer.email || `phone.${normalizedPhone}@customer.chrisea.local`;
+    const [users] = await connection.query(`
+      SELECT id, role FROM users
+      WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ? OR email = ?
+      ORDER BY CASE WHEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ? THEN 0 ELSE 1 END
+      LIMIT 1 FOR UPDATE
+    `, [normalizedPhone, customerEmail, normalizedPhone]);
     let userId = users[0]?.id;
     if (!userId) {
       const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
       const [userResult] = await connection.query(
         'INSERT INTO users (email, password_hash, full_name, phone, role, status) VALUES (?, ?, ?, ?, ?, ?)',
-        [checkout.customer.email, passwordHash, checkout.customer.fullName, checkout.customer.phone, 'customer', 'active']
+        [customerEmail, passwordHash, checkout.customer.fullName, checkout.customer.phone, 'customer', 'active']
       );
       userId = userResult.insertId;
     }
@@ -80,13 +87,12 @@ export async function createOrder(req, res) {
     const promotion = promotionRows[0];
     if (promoCode && !promotion) throw new AppError(400, 'INVALID_PROMO_CODE', 'This promo code is invalid or no longer active.');
     if (promotion?.first_order_only) {
-      const normalizedPhone = checkout.customer.phone.replace(/\D/g, '');
       const [previousOrders] = await connection.query(`
-        SELECT o.id FROM orders o JOIN users u ON u.id = o.user_id
+        SELECT o.id FROM orders o
         WHERE o.status NOT IN ('cancelled', 'payment_rejected')
-          AND (o.user_id = ? OR u.email = ? OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(o.recipient_phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?)
+          AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(o.recipient_phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?
         LIMIT 1 FOR UPDATE
-      `, [userId, checkout.customer.email, normalizedPhone]);
+      `, [normalizedPhone]);
       if (previousOrders.length) throw new AppError(409, 'FIRST_ORDER_PROMO_ALREADY_USED', 'This promotion is available for first orders only.');
     }
     const discountTotal = promotion && subtotal >= Number(promotion.minimum_spend) ? Math.min(subtotal, subtotal * Number(promotion.discount_value) / 100) : 0;

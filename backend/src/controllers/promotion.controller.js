@@ -5,7 +5,7 @@ const validationSchema = z.object({
   code: z.string().trim().max(50).optional().default(''),
   subtotal: z.coerce.number().min(0).max(999999),
   email: z.string().trim().toLowerCase().email().max(255).optional().or(z.literal('')),
-  phone: z.string().trim().max(30).optional().default('')
+  phone: z.string().trim().min(7).max(30)
 });
 
 const phoneDigits = (value) => String(value || '').replace(/\D/g, '');
@@ -40,17 +40,13 @@ export async function validatePromotion(req, res) {
   if (promotion.usage_limit !== null && Number(promotion.usage_count) >= Number(promotion.usage_limit)) return invalid('USAGE_LIMIT_REACHED');
   if (subtotal < Number(promotion.minimum_spend)) return invalid('MINIMUM_SPEND', { minimumSpend: Number(promotion.minimum_spend), shortfall: Number(promotion.minimum_spend) - subtotal });
   if (promotion.first_order_only) {
-    const email = parsed.data.email || '';
     const phone = phoneDigits(parsed.data.phone);
-    if (!email && !phone) {
-      return res.json({ success: true, data: { valid: false, reason: 'FIRST_ORDER_DETAILS_REQUIRED', promotion: null, discountTotal: 0 } });
-    }
     const [previousOrders] = await pool.query(`
-      SELECT o.id FROM orders o JOIN users u ON u.id = o.user_id
+      SELECT o.id FROM orders o
       WHERE o.status NOT IN ('cancelled', 'payment_rejected')
-        AND (LOWER(u.email) = ? OR REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(o.recipient_phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?)
+        AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(o.recipient_phone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = ?
       LIMIT 1
-    `, [email, phone]);
+    `, [phone]);
     if (previousOrders.length) {
       return res.json({ success: true, data: { valid: false, reason: 'FIRST_ORDER_ONLY', promotion: null, discountTotal: 0 } });
     }

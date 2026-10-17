@@ -29,6 +29,32 @@ function clearToken() {
   window.sessionStorage.removeItem(TOKEN_KEY);
 }
 
+function requestAdminConfirmation({ eyebrow = 'Please confirm', title, message, confirmLabel = 'Confirm' }) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'admin-confirm-backdrop';
+    const modal = document.createElement('section');
+    modal.className = 'admin-confirm-modal';
+    modal.setAttribute('role', 'alertdialog');
+    modal.setAttribute('aria-modal', 'true');
+    const close = document.createElement('button');
+    close.className = 'admin-confirm-close'; close.type = 'button'; close.textContent = '×'; close.setAttribute('aria-label', 'Close confirmation');
+    const icon = document.createElement('span'); icon.className = 'admin-confirm-icon'; icon.textContent = '!';
+    const kicker = document.createElement('p'); kicker.textContent = eyebrow;
+    const heading = document.createElement('h2'); heading.textContent = title;
+    const rule = document.createElement('div'); rule.className = 'admin-confirm-rule';
+    const copy = document.createElement('p'); copy.className = 'admin-confirm-copy'; copy.textContent = message;
+    const actions = document.createElement('div'); actions.className = 'admin-confirm-actions';
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Keep it';
+    const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'danger'; confirm.textContent = confirmLabel;
+    actions.append(cancel, confirm); modal.append(close, icon, kicker, heading, rule, copy, actions); backdrop.append(modal); document.body.append(backdrop);
+    const finish = (value) => { document.removeEventListener('keydown', onKeyDown); backdrop.remove(); resolve(value); };
+    const onKeyDown = (event) => { if (event.key === 'Escape') finish(false); };
+    close.addEventListener('click', () => finish(false)); cancel.addEventListener('click', () => finish(false)); confirm.addEventListener('click', () => finish(true));
+    backdrop.addEventListener('mousedown', (event) => { if (event.target === backdrop) finish(false); }); document.addEventListener('keydown', onKeyDown); confirm.focus();
+  });
+}
+
 async function refreshAuthentication() {
   const response = await fetch(`${API_URL}/auth/refresh`, {
     method: 'POST',
@@ -484,7 +510,7 @@ function RecycleBinModal({ type, onClose, onRestored }) {
     finally { setRestoringId(null); }
   };
   const permanentlyDelete = async (item) => {
-    if (!window.confirm(`Permanently delete ${isOrders ? item.order_number : item.name}? This cannot be undone.`)) return;
+    if (!await requestAdminConfirmation({ eyebrow: 'Permanent deletion', title: `Delete ${isOrders ? item.order_number : item.name}?`, message: 'This item will be removed permanently and cannot be restored.', confirmLabel: 'Delete forever' })) return;
     setDeletingId(item.id); setError('');
     try { await api(`/admin/${isOrders ? 'orders' : 'products'}/${item.id}/permanent`, { method: 'DELETE' }); setItems((current) => current.filter((entry) => entry.id !== item.id)); await onRestored(); }
     catch (deleteError) { setError(deleteError.message); }
@@ -528,7 +554,7 @@ function Promotions({ promotions = [], onChanged, onStartGuide }) {
   const [modal, setModal] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const toggle = async (promotion) => { await api(`/admin/promotions/${promotion.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: !promotion.is_active }) }); await onChanged(); };
-  const remove = async (promotion) => { if (!window.confirm(`Permanently delete ${promotion.name}? This cannot be undone.`)) return; setDeletingId(promotion.id); try { await api(`/admin/promotions/${promotion.id}`, { method: 'DELETE' }); await onChanged(); } finally { setDeletingId(null); } };
+  const remove = async (promotion) => { if (!await requestAdminConfirmation({ eyebrow: 'Delete promotion', title: `Delete ${promotion.name}?`, message: 'This promotion will be removed permanently and customers will no longer be able to use it.', confirmLabel: 'Delete promotion' })) return; setDeletingId(promotion.id); try { await api(`/admin/promotions/${promotion.id}`, { method: 'DELETE' }); await onChanged(); } finally { setDeletingId(null); } };
   const currentTime = Date.now();
   const active = promotions.filter((item) => item.is_active && new Date(item.starts_at).getTime() <= currentTime && new Date(item.ends_at).getTime() >= currentTime).length;
   const scheduled = promotions.filter((item) => item.is_active && new Date(item.starts_at).getTime() > currentTime).length;
@@ -557,7 +583,7 @@ function Products({ products = [], categories = [], onAdd, onView, onCategoriesC
   const visibleProducts = filtered.slice((page - 1) * 10, page * 10);
   useEffect(() => setPage(1), [query, category, status]);
   const removeProduct = async (product) => {
-    if (!window.confirm(`Move ${product.name} to the recycle bin?`)) return;
+    if (!await requestAdminConfirmation({ eyebrow: 'Product collection', title: `Move ${product.name}?`, message: 'This product will leave the storefront and move to the recycle bin. You can restore it later.', confirmLabel: 'Move to recycle bin' })) return;
     setDeletingId(product.id);
     try { await api(`/admin/products/${product.id}`, { method: 'DELETE' }); await onDeleted(); }
     finally { setDeletingId(null); }
@@ -623,7 +649,7 @@ function Orders({ orders = [], onChanged, onStartGuide }) {
   const [deletingId, setDeletingId] = useState(null);
   const [page, setPage] = useState(1);
   const filtered = orders.filter((order) => {
-    const matchesQuery = `${order.order_number} ${order.full_name} ${order.email}`.toLowerCase().includes(query.toLowerCase());
+    const matchesQuery = `${order.order_number} ${order.full_name} ${order.recipient_phone || ''} ${order.email || ''}`.toLowerCase().includes(query.toLowerCase());
     return matchesQuery && (status === 'all' || order.status === status);
   });
   const revenue = orders.filter((order) => !['cancelled', 'payment_rejected'].includes(order.status)).reduce((sum, order) => sum + Number(order.grand_total || 0), 0);
@@ -634,7 +660,7 @@ function Orders({ orders = [], onChanged, onStartGuide }) {
   const visibleOrders = filtered.slice((page - 1) * 10, page * 10);
   useEffect(() => setPage(1), [query, status]);
   const updateStatus = async (order, nextStatus) => { setSavingStatusId(order.id); try { await api(`/admin/orders/${order.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus }) }); await onChanged(); } finally { setSavingStatusId(null); } };
-  const removeOrder = async (order) => { if (!window.confirm(`Move ${order.order_number} to the recycle bin?`)) return; setDeletingId(order.id); try { await api(`/admin/orders/${order.id}`, { method: 'DELETE' }); await onChanged(); } finally { setDeletingId(null); } };
+  const removeOrder = async (order) => { if (!await requestAdminConfirmation({ eyebrow: 'Order ledger', title: `Move ${order.order_number}?`, message: 'This order will move to the recycle bin. Inventory will be returned and the order can be restored later.', confirmLabel: 'Move to recycle bin' })) return; setDeletingId(order.id); try { await api(`/admin/orders/${order.id}`, { method: 'DELETE' }); await onChanged(); } finally { setDeletingId(null); } };
   return <section className="admin-orders-page">
     <div className="admin-page-heading"><div><p>Client care</p><h1>Order ledger</h1><span>Review payments and follow every order journey.</span></div><div className="admin-page-actions"><button className="admin-page-guide" onClick={onStartGuide}><CircleHelp /> Orders tutorial</button><button className="admin-secondary" onClick={() => setTrashOpen(true)}><Trash2 /> Recycle bin</button></div></div>
     <div className="admin-order-summary"><article><ShoppingBag /><div><span>Total orders</span><strong>{orders.length}</strong></div></article><article><CircleDollarSign /><div><span>Total value</span><strong>{money(revenue)}</strong></div></article><article><AlertTriangle /><div><span>Needs attention</span><strong>{pending}</strong></div></article><article><ClipboardCheck /><div><span>Fulfilled</span><strong>{fulfilled}</strong></div></article></div>

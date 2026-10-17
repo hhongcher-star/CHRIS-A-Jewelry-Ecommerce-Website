@@ -995,6 +995,7 @@ function CartPage() {
   const applyPromo = async () => {
     const code = promo.trim().toUpperCase();
     if (!code) { setDiscount(0); setPromoMessage('Enter a promo code'); return; }
+    if (checkout.phone.replace(/\D/g, '').length < 7) { setDiscount(0); setPromoMessage('Enter your phone number first so we can check this promotion.'); return; }
     try {
       const response = await fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code, email: checkout.email.trim(), phone: checkout.phone.trim() }) });
       const result = await response.json();
@@ -1008,7 +1009,7 @@ function CartPage() {
           USAGE_LIMIT_REACHED: 'This promo code has reached its usage limit.',
           MINIMUM_SPEND: `Spend another RM ${Number(result.data?.shortfall || 0).toFixed(2)} to use this promo code (minimum RM ${Number(result.data?.minimumSpend || 0).toFixed(2)}).`,
           FIRST_ORDER_ONLY: 'This promo code is for first-time buyers only. Cancelled or rejected orders do not affect your eligibility.',
-          FIRST_ORDER_DETAILS_REQUIRED: 'Enter your email or phone number first so we can check your first-order eligibility.'
+          FIRST_ORDER_DETAILS_REQUIRED: 'Enter your phone number first so we can check your first-order eligibility.'
         };
         setPromoMessage(promoReasons[result.data?.reason] || 'This promo code cannot be applied. Please check the offer requirements.');
         return;
@@ -1025,9 +1026,9 @@ function CartPage() {
   };
   const updateCheckout = (key) => (event) => { setCheckout((current) => ({ ...current, [key]: event.target.value })); setCheckoutError(''); };
   const openPayment = () => {
-    const required = ['fullName', 'email', 'phone', 'addressLine1', 'city', 'state', 'postcode'];
+    const required = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'postcode'];
     if (required.some((key) => !checkout[key].trim())) { setCheckoutError('Please complete your contact and delivery details.'); return; }
-    if (!/^\S+@\S+\.\S+$/.test(checkout.email)) { setCheckoutError('Please enter a valid email address.'); return; }
+    if (checkout.email && !/^\S+@\S+\.\S+$/.test(checkout.email)) { setCheckoutError('Please enter a valid email address or leave it blank.'); return; }
     if (cartItems.some((item) => !item.variantId)) { setCheckoutError('One of these products needs to be refreshed before checkout.'); return; }
     setCheckoutError('');
     setPaymentOpen(true);
@@ -1079,7 +1080,7 @@ function CartPage() {
           </div>
 
           <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{total >= 200 ? 'Complimentary' : 'RM 15.00'}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
-            {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email<input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<div className="cart-payment-method">Touch 'n Go QR</div></label></div>}
+            {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email <small>Optional</small><input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" required /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<div className="cart-payment-method">Touch 'n Go QR</div></label></div>}
             {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
             {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={openPayment}>Place order <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
             <a className="cart-continue" href="/shop">Continue shopping</a>

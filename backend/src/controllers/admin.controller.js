@@ -377,13 +377,14 @@ export async function uploadProductImage(req, res) {
 export async function listOrders(_req, res) {
   const [rows] = await pool.query(`
     SELECT o.id, o.order_number, o.status, o.grand_total, o.currency,
-      o.payment_method, o.created_at, u.full_name, u.email,
+      o.payment_method, o.created_at, o.recipient_phone, u.full_name,
+      CASE WHEN u.email LIKE '%@customer.chrisea.local' THEN o.recipient_phone ELSE u.email END AS email,
       COUNT(oi.id) AS item_count
     FROM orders o
     JOIN users u ON u.id = o.user_id
     LEFT JOIN order_items oi ON oi.order_id = o.id
     WHERE o.deleted_at IS NULL
-    GROUP BY o.id, u.full_name, u.email
+    GROUP BY o.id, o.recipient_phone, u.full_name, u.email
     ORDER BY o.created_at DESC
     LIMIT 100
   `);
@@ -455,7 +456,8 @@ export async function updateOrderStatus(req, res) {
 
 export async function listDeletedOrders(_req, res) {
   const [rows] = await pool.query(`
-    SELECT o.id, o.order_number, o.grand_total, o.status, o.payment_method, o.created_at, o.deleted_at, u.full_name, u.email,
+      SELECT o.id, o.order_number, o.grand_total, o.status, o.payment_method, o.created_at, o.deleted_at, o.recipient_phone, u.full_name,
+        CASE WHEN u.email LIKE '%@customer.chrisea.local' THEN o.recipient_phone ELSE u.email END AS email,
       (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
     FROM orders o JOIN users u ON u.id = o.user_id
     WHERE o.deleted_at IS NOT NULL ORDER BY o.deleted_at DESC LIMIT 100
