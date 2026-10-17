@@ -786,9 +786,9 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
   .story-copy { padding: 0; }
   .story-copy h2 { font-size: 52px; }
   .story-signoff { margin-top: 38px; }
-  .story-collage { height: 520px; min-height: 520px; margin-top: 35px; overflow: visible; }
-  .story-main { width: 65%; height: 430px; left: 0; z-index: 2; object-fit: contain; object-position: left top; }
-  .story-detail { width: 52%; height: 300px; right: 0; bottom: 0; z-index: 1; object-fit: contain; object-position: right bottom; }
+  .story-collage { height: 540px; min-height: 540px; margin-top: 35px; overflow: visible; }
+  .story-main { width: 70%; height: 500px; left: 0; top: 0; z-index: 1; object-fit: cover; object-position: center; }
+  .story-detail { width: 50%; height: 285px; right: 0; bottom: 0; z-index: 2; border-width: 7px; object-fit: cover; object-position: center; }
   .story-seal { width: 90px; height: 90px; right: 0; top: 5px; z-index: 3; font-size: 6px; }
   .promise { padding-top: 55px; padding-bottom: 60px; }
   .promise-heading { text-align: left; }
