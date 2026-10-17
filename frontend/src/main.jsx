@@ -85,19 +85,13 @@ function ResponsiveContentImage({ content, path, src, className = '', ...props }
   const desktopY = Number(desktop.y ?? 50);
   const mobileX = Number(mobile.x ?? desktop.x ?? 50);
   const mobileY = Number(mobile.y ?? desktop.y ?? 50);
-  const adjustmentStyle = {
-    '--cms-desktop-fit': desktop.fit || 'cover',
-    '--cms-desktop-position': `${desktopX}% ${desktopY}%`,
-    '--cms-desktop-zoom': Number(desktop.zoom || 100) / 100,
-    '--cms-mobile-fit': mobile.fit || desktop.fit || 'cover',
-    '--cms-mobile-position': `${mobileX}% ${mobileY}%`,
-    '--cms-mobile-zoom': Number(mobile.zoom || desktop.zoom || 100) / 100,
-  };
-  const desktopClass = `${className} cms-adjustable-image cms-image-desktop${mobileSrc ? ' has-mobile' : ''}`.trim();
+  const desktopStyle = { objectFit: desktop.fit || 'cover', objectPosition: `${desktopX}% ${desktopY}%`, transform: `scale(${Number(desktop.zoom || 100) / 100})`, transformOrigin: `${desktopX}% ${desktopY}%` };
+  const mobileStyle = { objectFit: mobile.fit || desktop.fit || 'cover', objectPosition: `${mobileX}% ${mobileY}%`, transform: `scale(${Number(mobile.zoom || desktop.zoom || 100) / 100})`, transformOrigin: `${mobileX}% ${mobileY}%` };
+  const desktopClass = `${className} cms-adjustable-image cms-image-desktop has-mobile`.trim();
   const mobileClass = `${className} cms-adjustable-image cms-image-mobile`.trim();
   return <>
-    <img className={desktopClass} src={src} style={adjustmentStyle} {...props} />
-    {mobileSrc && <img className={mobileClass} src={mobileSrc} style={adjustmentStyle} {...props} />}
+    <img className={desktopClass} src={src} style={desktopStyle} {...props} />
+    <img className={mobileClass} src={mobileSrc || src} style={mobileStyle} {...props} />
   </>;
 }
 
@@ -638,7 +632,7 @@ function ShopPromotionSlider({ content, mobileImages = {}, imageAdjustments = {}
     const desktopY = Number(desktop.y ?? 50);
     const mobileX = Number(mobile.x ?? desktop.x ?? 50);
     const mobileY = Number(mobile.y ?? desktop.y ?? 50);
-    return { ...promotionFallback[0], ...promotion, mobileImage: mobileImages[path] || '', adjustmentStyle: { '--cms-desktop-fit': desktop.fit || 'cover', '--cms-desktop-position': `${desktopX}% ${desktopY}%`, '--cms-desktop-zoom': Number(desktop.zoom || 100) / 100, '--cms-mobile-fit': mobile.fit || desktop.fit || 'cover', '--cms-mobile-position': `${mobileX}% ${mobileY}%`, '--cms-mobile-zoom': Number(mobile.zoom || desktop.zoom || 100) / 100 }, id: `website-content-promotion-${index + 1}` };
+    return { ...promotionFallback[0], ...promotion, mobileImage: mobileImages[path] || '', desktopStyle: { objectFit: desktop.fit || 'cover', objectPosition: `${desktopX}% ${desktopY}%`, transform: `scale(${Number(desktop.zoom || 100) / 100})`, transformOrigin: `${desktopX}% ${desktopY}%` }, mobileStyle: { objectFit: mobile.fit || desktop.fit || 'cover', objectPosition: `${mobileX}% ${mobileY}%`, transform: `scale(${Number(mobile.zoom || desktop.zoom || 100) / 100})`, transformOrigin: `${mobileX}% ${mobileY}%` }, id: `website-content-promotion-${index + 1}` };
   }) : [];
   const visiblePromotions = (cmsPromotions.length ? cmsPromotions : promotions).filter((promotion) => promotion.active !== false);
 
@@ -668,7 +662,7 @@ function ShopPromotionSlider({ content, mobileImages = {}, imageAdjustments = {}
   return (
     <section className="shop-promotion" aria-roledescription="carousel" aria-label="Current promotions">
       <div className="shop-promotion-media">
-        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-desktop${promotion.mobileImage ? ' has-mobile' : ''}`} src={promotion.image} style={promotion.adjustmentStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />{promotion.mobileImage && <img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-mobile`} src={promotion.mobileImage} style={promotion.adjustmentStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} />}</React.Fragment>)}
+        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-desktop has-mobile`} src={promotion.image} style={promotion.desktopStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} /><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-mobile`} src={promotion.mobileImage || promotion.image} style={promotion.mobileStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} /></React.Fragment>)}
       </div>
       <div className="shop-promotion-shade" />
       <div className="shop-promotion-copy" key={current.id}>
