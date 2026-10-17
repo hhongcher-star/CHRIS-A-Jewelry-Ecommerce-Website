@@ -109,11 +109,13 @@ export async function createCategory(req, res) {
 export async function deleteCategory(req, res) {
   const categoryId = Number(req.params.id);
   if (!Number.isInteger(categoryId) || categoryId < 1) throw new AppError(400, 'INVALID_CATEGORY_ID', 'The category ID is invalid.');
-  const [[categoryRows], [countRows]] = await Promise.all([
+  const [[categoryRows], [countRows], [productRows]] = await Promise.all([
     pool.query('SELECT id FROM categories WHERE id = ? AND is_active = TRUE LIMIT 1', [categoryId]),
-    pool.query('SELECT COUNT(*) AS active_count FROM categories WHERE is_active = TRUE')
+    pool.query('SELECT COUNT(*) AS active_count FROM categories WHERE is_active = TRUE'),
+    pool.query('SELECT COUNT(*) AS product_count FROM products WHERE category_id = ?', [categoryId])
   ]);
   if (!categoryRows.length) throw new AppError(404, 'CATEGORY_NOT_FOUND', 'This category could not be found.');
+  if (Number(productRows[0].product_count) > 0) throw new AppError(409, 'CATEGORY_HAS_PRODUCTS', 'Remove every product from this category before deleting it.');
   if (Number(countRows[0].active_count) <= 1) throw new AppError(409, 'LAST_CATEGORY', 'At least one active category is required.');
   await pool.query('UPDATE categories SET is_active = FALSE WHERE id = ?', [categoryId]);
   res.status(204).send();
