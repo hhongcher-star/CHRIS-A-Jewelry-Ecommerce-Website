@@ -2,11 +2,7 @@
 -- Initial MySQL 8 / MariaDB-compatible schema.
 -- Review migration tooling and production charset support before deployment.
 
-CREATE DATABASE IF NOT EXISTS chrisea_jewelry
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE chrisea_jewelry;
+-- The database is selected by the connection or deployment-specific import file.
 
 CREATE TABLE users (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

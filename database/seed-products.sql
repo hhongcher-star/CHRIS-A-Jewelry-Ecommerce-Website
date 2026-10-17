@@ -2,7 +2,7 @@
 -- Run schema.sql before this file.
 -- Stock is intentionally set to 0 until the merchant confirms quantities.
 
-USE chrisea_jewelry;
+-- The database is selected by the connection or deployment-specific import file.
 
 SET @necklaces_category_id = (
   SELECT id FROM categories WHERE slug = 'necklaces' LIMIT 1

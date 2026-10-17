@@ -39,3 +39,4 @@ JOIN (
 SET pv.stock_quantity = 0,
     pv.is_active = FALSE
 WHERE pv.id <> keeper.keep_id;
+

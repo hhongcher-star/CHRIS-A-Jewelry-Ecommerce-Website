@@ -20,3 +20,4 @@ UPDATE product_variants SET stock_quantity = CASE sku
   WHEN 'CHR-ERG-004-PT' THEN 3
   ELSE stock_quantity
 END;
+
