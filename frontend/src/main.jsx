@@ -330,6 +330,54 @@ const addCartItem = (product, quantity = 1) => {
   return next;
 };
 
+function addCartItemAnimated(event, product, quantity = 1, onAdded) {
+  const button = event?.currentTarget;
+  const bag = document.querySelector('.bag-button');
+  const source = button?.closest('article, .product-detail-grid')?.querySelector('.product-main-image img, .shop-image-primary, img') || document.querySelector('.product-main-image img');
+  const finish = () => {
+    const next = addCartItem(product, quantity);
+    onAdded?.(next);
+    if (bag) {
+      bag.classList.remove('bag-pop');
+      void bag.offsetWidth;
+      bag.classList.add('bag-pop');
+      window.setTimeout(() => bag.classList.remove('bag-pop'), 520);
+    }
+  };
+  if (button) {
+    const original = button.innerHTML;
+    button.classList.add('is-added');
+    button.textContent = '✓ ADDED TO BAG';
+    window.setTimeout(() => { if (button.isConnected) { button.innerHTML = original; button.classList.remove('is-added'); } }, 1500);
+  }
+  if (!bag || !source || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    finish();
+    return;
+  }
+  const start = source.getBoundingClientRect();
+  const destination = bag.getBoundingClientRect();
+  const size = Math.max(42, Math.min(64, Math.min(start.width, start.height) * .22));
+  const flyer = source.cloneNode(true);
+  flyer.className = 'cart-flying-image';
+  Object.assign(flyer.style, { left: `${start.left + start.width / 2 - size / 2}px`, top: `${start.top + start.height / 2 - size / 2}px`, width: `${size}px`, height: `${size}px` });
+  document.body.appendChild(flyer);
+  const endX = destination.left + destination.width / 2 - (start.left + start.width / 2);
+  const endY = destination.top + destination.height / 2 - (start.top + start.height / 2);
+  flyer.animate([
+    { transform: 'translate3d(0,0,0) scale(1)', opacity: 1, offset: 0 },
+    { transform: `translate3d(${endX * .48}px,${endY * .38 - 90}px,0) scale(.78)`, opacity: .9, offset: .48 },
+    { transform: `translate3d(${endX}px,${endY}px,0) scale(.28)`, opacity: 0, offset: 1 },
+  ], { duration: 700, easing: 'cubic-bezier(.22,.8,.3,1)', fill: 'forwards' }).finished.then(() => { flyer.remove(); finish(); }).catch(() => { flyer.remove(); finish(); });
+}
+
+function ProductGridSkeleton({ count = 4 }) {
+  return <div className="product-grid-skeleton" aria-label="Loading products">{Array.from({ length: count }, (_, index) => <article className="skeleton-card" key={index}><i className="skeleton-image" /><i className="skeleton-line short" /><i className="skeleton-line" /><i className="skeleton-line medium" /><i className="skeleton-button" /></article>)}</div>;
+}
+
+function ProductDetailSkeleton() {
+  return <main className="product-detail-skeleton section-pad" aria-label="Loading product"><div className="skeleton-gallery skeleton-surface" /><div className="skeleton-copy"><i className="skeleton-line short" /><i className="skeleton-title skeleton-surface" /><i className="skeleton-line medium" /><i className="skeleton-paragraph skeleton-surface" /><i className="skeleton-paragraph skeleton-surface" /><i className="skeleton-button skeleton-surface" /></div></main>;
+}
+
 function BrandMark({ light = false }) {
   if (!light) {
     return (
@@ -764,14 +812,14 @@ function ShopPage() {
             <span>{visibleProducts.length} pieces</span>
           </div>
           <div className="shop-grid">
-            {loading && <div className="shop-catalog-message"><Sparkles /><h3>Preparing the collection…</h3></div>}
+            {loading && <ProductGridSkeleton />}
             {!loading && !visibleProducts.length && <div className="shop-catalog-message"><Gem /><h3>No active pieces in this category yet.</h3><p>Publish a product from the administration page to show it here.</p></div>}
             {visibleProducts.map((product) => {
               const href = productUrl(product);
               const stock = getProductStock(product);
               const soldOut = stock === 0;
               return (
-              <article className={`shop-card ${soldOut ? 'is-sold-out' : ''}`} key={product.id || product.name}>
+              <article className={`shop-card data-reveal ${soldOut ? 'is-sold-out' : ''}`} style={{ '--reveal-delay': `${Math.min(visibleProducts.indexOf(product), 8) * 60}ms` }} key={product.id || product.name}>
                 <div className="shop-card-image">
                   <a className="shop-image-link" href={href} aria-label={`View ${product.name}`}>
                     <img className="shop-image-primary" src={product.image} alt={product.name} />
@@ -779,7 +827,7 @@ function ShopPage() {
                   </a>
                   {product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}
                   {soldOut && <span className="sold-out-badge">Sold out</span>}
-                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Add to cart'}</button>
+                  <button className="quick-add" disabled={soldOut} onClick={(event) => addCartItemAnimated(event, { ...product, stock })}>{soldOut ? 'Sold out' : 'Add to cart'}</button>
                 </div>
                 <div className="shop-card-copy">
                   <p>{product.category}</p>
@@ -862,7 +910,7 @@ function ProductPage() {
   }, [loading, product, slug, soldOut]);
 
   if (loading) {
-    return <div className="page-shell product-page"><Header /><main className="product-state section-pad"><Sparkles /><h1>Preparing your piece…</h1></main><SiteFooter /></div>;
+    return <div className="page-shell product-page"><Header /><ProductDetailSkeleton /><SiteFooter /></div>;
   }
 
   if (!product) {
@@ -882,7 +930,7 @@ function ProductPage() {
       <main className="product-detail section-pad">
         <div className="product-breadcrumb"><a href="/#top">Home</a><span>/</span><a href="/shop">Shop</a><span>/</span><span>{product.category}</span><span>/</span><b>{product.name}</b></div>
         <section className="product-detail-grid">
-          <div className="product-gallery">
+          <div className="product-gallery data-reveal" style={{ '--reveal-delay': '0ms' }}>
             <div className="product-thumbnails">
               {images.map((image, index) => (
                 <button className={selectedImage === image ? 'is-active' : ''} onClick={() => setSelectedImage(image)} key={`${image}-${index}`}><img src={image} alt={`${product.name} view ${index + 1}`} /></button>
@@ -890,7 +938,7 @@ function ProductPage() {
             </div>
             <div className="product-main-image"><img src={selectedImage} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</div>
           </div>
-          <div className="product-information">
+          <div className="product-information data-reveal" style={{ '--reveal-delay': '60ms' }}>
             <p className="product-type">{product.category}</p>
             <h1>{product.name}</h1>
             <p className="product-price">{displayPrice}{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</p>
@@ -906,7 +954,7 @@ function ProductPage() {
               <p className="quantity-label">Quantity</p>
               <div className="product-buy-row">
                 <div className="quantity-control" aria-label="Quantity"><button disabled={soldOut} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button><span>{quantity}</span><button disabled={soldOut} onClick={() => setQuantity((value) => Math.min(typeof stock === 'number' ? stock : value + 1, value + 1))}>+</button></div>
-                <button className="product-add" disabled={soldOut} onClick={() => addCartItem(cartProduct, quantity)}>{soldOut ? 'Sold out' : 'Add to cart'} {!soldOut && <span>— {displayPrice}</span>}</button>
+                <button className="product-add" disabled={soldOut} onClick={(event) => addCartItemAnimated(event, cartProduct, quantity)}>{soldOut ? 'Sold out' : 'Add to cart'} {!soldOut && <span>— {displayPrice}</span>}</button>
               </div>
               <button className="product-buy-now" disabled={soldOut} onClick={() => { addCartItem(cartProduct, quantity); window.location.href = '/cart'; }}>{soldOut ? 'Currently unavailable' : 'Buy it now'} {!soldOut && <ArrowRight />}</button>
             </div>
@@ -1095,7 +1143,7 @@ function CartPage() {
               </article>)}</div>
             </> : <div className="cart-empty"><p>Your bag is waiting</p><h2>Find something made for your story.</h2><a href="/shop">Explore the collection <ArrowRight size={14} /></a></div>}
 
-            <section className="cart-recommendations"><p>{cartContent.recommendations.eyebrow}</p><h2>{cartContent.recommendations.title}</h2><div>{recommendations.map((product) => <article key={product.id || product.name}><a href={productUrl(product)}><img src={product.image} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</a><h3>{product.name}</h3><span>{product.price}{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</span><button disabled={product.stock === 0} onClick={() => addRecommended(product)}>{product.stock === 0 ? 'Sold out' : 'Add to cart'}</button></article>)}</div></section>
+            <section className="cart-recommendations"><p>{cartContent.recommendations.eyebrow}</p><h2>{cartContent.recommendations.title}</h2><div>{recommendations.map((product) => <article key={product.id || product.name}><a href={productUrl(product)}><img src={product.image} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</a><h3>{product.name}</h3><span>{product.price}{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</span><button disabled={product.stock === 0} onClick={(event) => addCartItemAnimated(event, product, 1, setCart)}>{product.stock === 0 ? 'Sold out' : 'Add to cart'}</button></article>)}</div></section>
           </div>
 
           <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{total >= 200 ? 'Complimentary' : 'RM 15.00'}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
@@ -1373,7 +1421,7 @@ function App() {
                   <a href={productUrl(product)}><img src={product.image} alt={product.name} /></a>
                   {product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}
                   {soldOut && <span className="sold-out-badge">Sold out</span>}
-                  <button className="quick-add" disabled={soldOut} onClick={() => addCartItem({ ...product, stock })}>{soldOut ? 'Sold out' : 'Add to cart'}</button>
+                  <button className="quick-add" disabled={soldOut} onClick={(event) => addCartItemAnimated(event, { ...product, stock })}>{soldOut ? 'Sold out' : 'Add to cart'}</button>
                 </div>
                 <div className="product-copy"><h3><a href={productUrl(product)}>{product.name}</a></h3><p>{product.detail}</p><span className="product-card-price"><strong>{product.price}</strong>{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</span>{typeof stock === 'number' && <small className={soldOut ? 'sold-out-note' : stock <= 3 ? 'low-stock-note' : 'stock-note'}>{soldOut ? 'Sold out' : stock <= 3 ? `Only ${stock} left` : 'In stock'}</small>}</div>
               </article>

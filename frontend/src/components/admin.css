@@ -456,7 +456,10 @@
 .admin-upload-tile, .admin-empty-image { cursor: pointer; transition: border-color .24s ease, background .24s ease, transform .24s ease; }
 .admin-upload-tile:hover, .admin-empty-image:hover { border-color: #8f5260; background: rgba(143,82,96,.035); transform: translateY(-2px); }
 .admin-upload-tile input, .admin-empty-image input { width: 1px; height: 1px; position: absolute; opacity: 0; pointer-events: none; }
-.admin-upload-tile.is-uploading { cursor: wait; opacity: .65; }
+.admin-upload-tile.is-uploading { cursor: wait; overflow: hidden; opacity: .72; background: #eadfd3; }
+.admin-upload-tile.is-uploading::after { content: ''; position: absolute; z-index: 0; inset: 0; transform: translateX(-120%) skewX(-18deg); background: linear-gradient(90deg,transparent,rgba(255,255,255,.68),transparent); animation: admin-upload-sweep 1.5s ease-in-out infinite; }
+.admin-upload-tile.is-uploading > * { position: relative; z-index: 1; }
+@keyframes admin-upload-sweep { to { transform: translateX(120%) skewX(-18deg); } }
 .admin-upload-tile svg { width: 28px; margin-bottom: 10px; stroke-width: 1.3; }
 .admin-upload-tile strong { font: 600 18px 'Cormorant Garamond', serif; }
 .admin-upload-tile span { max-width: 145px; margin-top: 7px; color: rgba(67,4,17,.55); font-size: 10px; line-height: 1.45; }
