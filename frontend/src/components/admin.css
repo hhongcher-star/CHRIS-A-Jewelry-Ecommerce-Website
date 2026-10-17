@@ -1049,7 +1049,7 @@
 .admin-page-guide { min-height: 42px; padding: 0 16px; border: 1px solid rgba(67,4,17,.22); display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: transparent; color: #430411; cursor: pointer; font: 700 9px Arial,sans-serif; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
 .admin-page-guide svg { width: 15px; stroke-width: 1.5; }
 .admin-page-guide:hover { background: #430411; color: #fbf7ef; }
-.admin-guide-highlight { position: relative !important; z-index: 530 !important; outline: 3px solid #c69a5a !important; outline-offset: 5px; box-shadow: 0 0 0 10px rgba(251,247,239,.92),0 20px 55px rgba(20,0,5,.35) !important; background-color: #fbf7ef !important; }
+.admin-guide-highlight { position: relative !important; z-index: 530 !important; outline: 3px solid #c69a5a !important; outline-offset: 5px; box-shadow: 0 0 0 10px rgba(251,247,239,.92),0 20px 55px rgba(20,0,5,.35) !important; }
 @keyframes admin-tour-fade { from { opacity: 0; } }
 @keyframes admin-tour-rise { from { opacity: 0; transform: translateY(18px); } }
 @keyframes admin-tour-pulse { 50% { box-shadow: 0 0 0 10px rgba(198,154,90,.08),0 12px 32px rgba(20,0,5,.28); } }
