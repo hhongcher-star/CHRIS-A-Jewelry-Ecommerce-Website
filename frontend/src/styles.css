@@ -2169,3 +2169,36 @@ body,
 .cms-preview-desktop .arrivals .section-intro { max-width: none; }
 .cms-preview-desktop .arrivals .product-track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; overflow: visible; margin-right: 0; padding-right: 0; }
 .cms-preview-desktop .arrivals .product-card { min-width: 0; }
+
+/* Checkout QR payment confirmation. */
+.qr-payment-backdrop { position: fixed; z-index: 10020; inset: 0; padding: 24px; display: grid; place-items: center; overflow-y: auto; background: rgba(28, 0, 7, .78); backdrop-filter: blur(8px); }
+.qr-payment-modal { width: min(540px, 100%); position: relative; padding: 36px 42px 32px; border: 1px solid rgba(67,4,17,.18); background: var(--ivory); color: var(--burgundy); text-align: center; box-shadow: 0 30px 90px rgba(20,0,5,.38); }
+.qr-payment-close { width: 38px; height: 38px; position: absolute; top: 14px; right: 14px; border: 1px solid rgba(67,4,17,.18); display: grid; place-items: center; background: transparent; color: var(--burgundy); cursor: pointer; }
+.qr-payment-close svg { width: 17px; }
+.qr-payment-kicker { margin: 0 0 9px; font: 600 9px 'Montserrat', sans-serif; letter-spacing: .22em; text-transform: uppercase; }
+.qr-payment-modal h2 { margin: 0; font: 500 36px/1 'Cormorant Garamond', serif; }
+.qr-payment-copy { max-width: 390px; margin: 13px auto 18px; color: rgba(67,4,17,.7); font: 13px/1.65 'Montserrat', sans-serif; }
+.qr-payment-code { width: min(300px, 78vw); aspect-ratio: 1; margin: 0 auto 16px; overflow: hidden; border: 1px solid rgba(67,4,17,.15); background: #fff; }
+.qr-payment-code img { width: 100%; height: 100%; object-fit: cover; }
+.qr-payment-total { max-width: 360px; margin: 0 auto 15px; padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; background: rgba(67,4,17,.055); font: 600 10px 'Montserrat', sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.qr-payment-total strong { font-size: 15px; letter-spacing: .04em; }
+.qr-payment-confirm { width: min(360px, 100%); min-height: 54px; border: 0; display: inline-flex; align-items: center; justify-content: center; gap: 15px; background: var(--burgundy); color: var(--ivory); cursor: pointer; font: 600 10px 'Montserrat', sans-serif; letter-spacing: .15em; text-transform: uppercase; }
+.qr-payment-confirm:disabled, .qr-payment-close:disabled, .qr-payment-cancel:disabled { cursor: wait; opacity: .6; }
+.qr-payment-cancel { margin: 14px auto 10px; border: 0; display: block; background: transparent; color: rgba(67,4,17,.7); cursor: pointer; font: 600 9px 'Montserrat', sans-serif; letter-spacing: .13em; text-decoration: underline; text-transform: uppercase; }
+.qr-payment-modal > small { max-width: 390px; margin: 0 auto; display: block; color: rgba(67,4,17,.55); font: 10px/1.5 'Montserrat', sans-serif; }
+
+@media (max-width: 760px) {
+  .hero-content { left: 18px; right: 18px; }
+  .hero-content h1 { width: min(100%, 350px); max-width: 350px; font-size: clamp(48px, 13.5vw, 58px); line-height: .88; letter-spacing: 0; }
+  .hero-description { margin-top: 20px; margin-bottom: 22px; font-size: 20px; }
+  .hero-cta { min-height: 52px; padding: 0 27px; gap: 17px; font-size: 10px; }
+  .cart-recommendations article { display: grid; grid-template-rows: auto 84px 28px 44px; align-content: start; }
+  .cart-recommendations h3 { min-height: 0; margin: 11px 0 3px; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: 17px; line-height: 1.05; }
+  .cart-recommendations article > span { align-self: center; }
+  .cart-recommendations button { min-height: 44px; margin-top: 0; align-self: end; font-size: 9px; }
+  .qr-payment-backdrop { padding: 12px; align-items: start; }
+  .qr-payment-modal { margin: 12px 0; padding: 30px 18px 24px; }
+  .qr-payment-modal h2 { padding: 0 24px; font-size: 32px; }
+  .qr-payment-copy { margin-bottom: 14px; font-size: 11px; }
+  .qr-payment-code { width: min(268px, 72vw); }
+}

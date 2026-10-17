@@ -956,6 +956,7 @@ function CartPage() {
   const [checkout, setCheckout] = useState({ fullName: '', email: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', postcode: '', paymentMethod: 'bank_transfer' });
   const [checkoutError, setCheckoutError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const { products: catalogueProducts } = useCatalogueProducts();
   const cartItems = cart.map((item) => {
     const product = catalogueProducts.find((candidate) => candidate.slug === item.slug || candidate.name === item.name);
@@ -1013,11 +1014,15 @@ function CartPage() {
     } catch { setDiscount(0); setPromoMessage('Unable to validate this promo code'); }
   };
   const updateCheckout = (key) => (event) => { setCheckout((current) => ({ ...current, [key]: event.target.value })); setCheckoutError(''); };
-  const proceedToReceipt = async () => {
+  const openPayment = () => {
     const required = ['fullName', 'email', 'phone', 'addressLine1', 'city', 'state', 'postcode'];
     if (required.some((key) => !checkout[key].trim())) { setCheckoutError('Please complete your contact and delivery details.'); return; }
     if (!/^\S+@\S+\.\S+$/.test(checkout.email)) { setCheckoutError('Please enter a valid email address.'); return; }
     if (cartItems.some((item) => !item.variantId)) { setCheckoutError('One of these products needs to be refreshed before checkout.'); return; }
+    setCheckoutError('');
+    setPaymentOpen(true);
+  };
+  const proceedToReceipt = async () => {
     setPlacingOrder(true);
     setCheckoutError('');
     try {
@@ -1036,6 +1041,7 @@ function CartPage() {
       window.location.href = '/receipt';
     } catch (orderError) {
       setCheckoutError(orderError.message);
+      setPaymentOpen(false);
     } finally {
       setPlacingOrder(false);
     }
@@ -1065,7 +1071,7 @@ function CartPage() {
           <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{total >= 200 ? 'Complimentary' : 'RM 15.00'}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
             {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email<input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}><option value="bank_transfer">Bank transfer</option><option value="tng_qr">Touch 'n Go QR</option></select></label></div>}
             {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
-            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={proceedToReceipt}>{placingOrder ? 'Placing order…' : 'Place order'} {!placingOrder && <ArrowRight size={14} />}</button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
+            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={openPayment}>Place order <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
             <a className="cart-continue" href="/shop">Continue shopping</a>
             <div className="cart-promo"><label htmlFor="promo">Have a promo code?</label><div><input id="promo" value={promo} onChange={(event) => setPromo(event.target.value)} placeholder="Enter promo code" /><button onClick={applyPromo}>Apply</button></div>{promoMessage && <p>{promoMessage}</p>}</div>
             <div className="cart-benefits"><div><Truck /><span><strong>{cartBenefits[0]?.title}</strong>{cartBenefits[0]?.text}</span></div><div><Gift /><span><strong>{cartBenefits[1]?.title}</strong>{cartBenefits[1]?.text}</span></div><div><ShieldCheck /><span><strong>{cartBenefits[2]?.title}</strong>{cartBenefits[2]?.text}</span></div></div>
@@ -1087,6 +1093,19 @@ function CartPage() {
           <button className="promo-success-done" type="button" onClick={() => setPromoSuccess(null)}>Continue checkout <ArrowRight size={14} /></button>
         </section>
       </div>}
+      {paymentOpen && createPortal(<div className="qr-payment-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !placingOrder) setPaymentOpen(false); }}>
+        <section className="qr-payment-modal" role="dialog" aria-modal="true" aria-labelledby="qr-payment-title">
+          <button className="qr-payment-close" type="button" disabled={placingOrder} onClick={() => setPaymentOpen(false)} aria-label="Close payment window"><X /></button>
+          <p className="qr-payment-kicker">DuitNow QR payment</p>
+          <h2 id="qr-payment-title">Scan to complete your payment</h2>
+          <p className="qr-payment-copy">Open your banking or e-wallet app, scan the QR code and transfer to <strong>LEE CAY XIN</strong>.</p>
+          <div className="qr-payment-code"><img src="/assets/payment/duitnow-qr.png" alt="DuitNow QR code for payment to Lee Cay Xin" /></div>
+          <div className="qr-payment-total"><span>Amount to transfer</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
+          <button className="qr-payment-confirm" type="button" disabled={placingOrder} onClick={proceedToReceipt}>{placingOrder ? 'Creating your order…' : 'I have paid — continue'} {!placingOrder && <ArrowRight size={14} />}</button>
+          <button className="qr-payment-cancel" type="button" disabled={placingOrder} onClick={() => setPaymentOpen(false)}>Pay later</button>
+          <small>Please only continue after the transfer is complete. Your order will be recorded as pending payment confirmation.</small>
+        </section>
+      </div>, document.body)}
       <SiteFooter />
     </div>
   );
