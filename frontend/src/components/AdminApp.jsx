@@ -311,7 +311,7 @@ function AdminTour({ item, step, total, onBack, onNext, onClose }) {
     return () => target.removeEventListener('pointerdown', showTarget, true);
   }, [item.selector, step]);
   return <><div className="admin-tour-shade" aria-hidden="true" /><div className={`admin-tour-layer ${cardInFront ? 'message-in-front' : 'target-in-front'}`} role="presentation">
-    <section ref={cardRef} className="admin-tour-card" style={cardPosition} onPointerDown={() => setCardInFront(true)} role="dialog" aria-modal="true" aria-labelledby="admin-tour-title">
+    <section ref={cardRef} className="admin-tour-card" style={cardPosition} onPointerDown={() => setCardInFront(true)} role="dialog" aria-modal="true" aria-hidden={!cardInFront} aria-labelledby="admin-tour-title">
       <button className="admin-tour-close" type="button" onClick={onClose} aria-label="Close guide"><X /></button>
       <div className="admin-tour-progress" onPointerDown={startDrag} onPointerMove={dragWindow} onPointerUp={stopDrag} onPointerCancel={stopDrag}><span>Page tutorial · drag to move</span><strong>{step + 1} / {total}</strong></div>
       <div className="admin-tour-dots" style={{ gridTemplateColumns: `repeat(${total},1fr)` }}>{Array.from({ length: total }, (_, index) => <i className={index <= step ? 'active' : ''} key={index} />)}</div>
@@ -319,7 +319,7 @@ function AdminTour({ item, step, total, onBack, onNext, onClose }) {
       <button className="admin-tour-window-hint" type="button" onClick={() => setCardInFront((value) => !value)}>{cardInFront ? 'Click the highlighted area to view it in front' : 'Bring this tutorial window to front'}</button>
       <footer><button type="button" className="skip" onClick={onClose}><X /> Close</button><button type="button" className="back" disabled={step === 0} onClick={onBack}><ArrowLeft /> Back</button><button type="button" className="next" onClick={onNext}>{step === total - 1 ? 'Finish' : 'Next'} {step < total - 1 && <ArrowUpRight />}</button></footer>
     </section>
-  </div><button className="admin-tour-swap" type="button" onClick={() => setCardInFront((value) => !value)} aria-label={cardInFront ? 'Show highlighted content in front' : 'Show tutorial in front'} title={cardInFront ? 'Show highlighted content in front' : 'Show tutorial in front'}>{cardInFront ? <Eye /> : <EyeOff />}</button></>;
+  </div>{!cardInFront && <span className="admin-tour-return-label">Tap here to return to tutorial</span>}<button className="admin-tour-swap" type="button" onClick={() => setCardInFront((value) => !value)} aria-label={cardInFront ? 'Hide tutorial and view highlighted content' : 'Return to tutorial'} title={cardInFront ? 'Hide tutorial and view highlighted content' : 'Return to tutorial'}>{cardInFront ? <EyeOff /> : <Eye />}</button></>;
 }
 
 const money = (value) => `RM ${Number(value || 0).toFixed(2)}`;
