@@ -1269,7 +1269,7 @@ function ReceiptPage() {
   return (
     <div className="page-shell receipt-page">
       <Header />
-      {showSharePrompt && <div className="receipt-prompt-backdrop" role="presentation">
+      {showSharePrompt && createPortal(<div className="receipt-prompt-backdrop" role="presentation">
         <section className="receipt-prompt" role="dialog" aria-modal="true" aria-labelledby="receipt-prompt-title">
           <button className="receipt-prompt-close" type="button" aria-label="Close" onClick={() => setShowSharePrompt(false)}><X size={18} /></button>
           <span className="receipt-prompt-icon">♡</span>
@@ -1279,7 +1279,7 @@ function ReceiptPage() {
           <p className="receipt-prompt-copy">Please share your payment record together with this receipt so we can verify your payment and prepare your order.</p>
           <button className="receipt-prompt-share" type="button" disabled={!receiptImageUrl} onClick={() => { setShowSharePrompt(false); shareReceipt(); }}><Share2 size={15} /> {receiptImageUrl ? 'Share receipt' : 'Preparing receipt…'}</button>
         </section>
-      </div>}
+      </div>, document.body)}
       <main className="receipt-stage">
         {receipt ? <section className="receipt-layout section-pad">
           <article className="receipt-paper">

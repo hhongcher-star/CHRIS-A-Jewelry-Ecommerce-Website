@@ -1562,10 +1562,13 @@ body,
 .receipt-prompt-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 10030;
+  width: 100%;
+  height: 100dvh;
   display: grid;
   place-items: center;
   padding: 20px;
+  overflow-y: auto;
   background: rgba(25,0,6,.72);
   backdrop-filter: blur(5px);
 }
@@ -1573,6 +1576,8 @@ body,
 .receipt-prompt {
   position: relative;
   width: min(480px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
   padding: 46px 48px 42px;
   border: 1px solid rgba(67,4,17,.18);
   outline: 1px solid rgba(248,243,233,.62);
@@ -1655,10 +1660,12 @@ body,
 }
 
 @media (max-width: 520px) {
-  .receipt-prompt-backdrop { padding: 17px; }
-  .receipt-prompt { padding: 40px 27px 30px; }
+  .receipt-prompt-backdrop { padding: 12px; }
+  .receipt-prompt { max-height: calc(100dvh - 24px); padding: 32px 27px 26px; }
+  .receipt-prompt-icon { width: 46px; height: 46px; margin-bottom: 13px; }
   .receipt-prompt h2 { font-size: 31px; }
-  .receipt-prompt .receipt-prompt-copy { font-size: 16px; }
+  .receipt-prompt-rule { margin: 17px auto; }
+  .receipt-prompt .receipt-prompt-copy { margin-bottom: 20px; font-size: 16px; }
 }
 
 /* Alternating burgundy / ivory storefront system. Header styles are intentionally untouched. */
