@@ -1265,6 +1265,7 @@
   .admin-site-preview > header > a { font-size: 8px; }
   .admin-site-preview iframe, .admin-site-preview.is-mobile iframe { height: 540px; }
   .admin-preview-devices button { padding: 0 10px; }
+  .admin-preview-devices button:first-child { display: none; }
   .admin-content-product-choice > div { grid-template-columns: 1fr 1fr; }
   .admin-content-picker-backdrop { padding: 0; align-items: end; }
   .admin-content-picker { width: 100%; max-height: 94dvh; padding: 21px 16px; }
