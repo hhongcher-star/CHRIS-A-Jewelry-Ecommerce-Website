@@ -7,7 +7,7 @@ const cookieName = 'chrisea_refresh';
 const cookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
   path: '/api/auth',
   maxAge: durationToMilliseconds(env.JWT_REFRESH_EXPIRES_IN)
 };

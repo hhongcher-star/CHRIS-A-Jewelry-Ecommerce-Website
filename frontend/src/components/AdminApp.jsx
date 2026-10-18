@@ -9,17 +9,24 @@ import './admin.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const TOKEN_KEY = 'chrisea-admin-access';
+const REMEMBER_KEY = 'chrisea-admin-remember';
 let accessToken = null;
 
-function storeToken(token) {
+function storeToken(token, persistent = window.localStorage.getItem(REMEMBER_KEY) === 'true') {
   accessToken = token;
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.sessionStorage.removeItem(TOKEN_KEY);
+  if (persistent) {
+    window.localStorage.setItem(TOKEN_KEY, token);
+    window.localStorage.setItem(REMEMBER_KEY, 'true');
+    window.sessionStorage.removeItem(TOKEN_KEY);
+  } else {
+    window.sessionStorage.setItem(TOKEN_KEY, token);
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(REMEMBER_KEY);
+  }
 }
 
 function readToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.sessionStorage.removeItem(TOKEN_KEY);
+  accessToken ||= window.sessionStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(TOKEN_KEY);
   return accessToken;
 }
 
@@ -27,6 +34,7 @@ function clearToken() {
   accessToken = null;
   window.localStorage.removeItem(TOKEN_KEY);
   window.sessionStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(REMEMBER_KEY);
 }
 
 function requestAdminConfirmation({ eyebrow = 'Please confirm', title, message, confirmLabel = 'Confirm' }) {
@@ -68,6 +76,16 @@ async function refreshAuthentication() {
   }
   storeToken(data.data.accessToken);
   return data.data;
+}
+
+async function restoreAuthentication() {
+  if (!readToken()) return refreshAuthentication();
+  try {
+    return { user: (await api('/auth/me', { retryAuth: false })).user, accessToken };
+  } catch (error) {
+    if (error.status !== 401) throw error;
+    return refreshAuthentication();
+  }
 }
 
 async function api(path, options = {}) {
@@ -158,6 +176,7 @@ function AdminLogin({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => window.localStorage.getItem(REMEMBER_KEY) === 'true');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -175,7 +194,7 @@ function AdminLogin({ onLogin }) {
         await api('/auth/logout', { method: 'POST' });
         throw new Error('This account does not have administrator access.');
       }
-      storeToken(result.accessToken);
+      storeToken(result.accessToken, rememberMe);
       onLogin(result.user);
     } catch (loginError) {
       setError(loginError.message);
@@ -211,7 +230,7 @@ function AdminLogin({ onLogin }) {
           <p className="admin-login-intro">Manage the collection and care for every CHRISÉA order.</p>
           <label>Email address<span className="admin-input"><Mail /><input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(''); }} autoComplete="username" placeholder="Enter your email" required /></span></label>
           <label>Password<span className="admin-input"><LockKeyhole /><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => { setPassword(event.target.value); setError(''); }} autoComplete="current-password" placeholder="Enter your password" required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
-          <div className="admin-login-options"><label><input type="checkbox" /> <span>Keep me signed in</span></label><button type="button" disabled>Forgot password?</button></div>
+          <div className="admin-login-options"><label><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /> <span>Keep me signed in</span></label><button type="button" disabled>Forgot password?</button></div>
           {error && <p className="admin-form-error" role="alert">{error}</p>}
           <button type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Enter dashboard'} <ArrowUpRight /></button>
           <div className="admin-login-divider"><i /><span>Secure administrator access</span><i /></div>
@@ -1222,7 +1241,7 @@ export default function AdminApp() {
   };
 
   useEffect(() => {
-    refreshAuthentication()
+    restoreAuthentication()
       .then(({ user: account }) => setUser(account))
       .catch(() => clearToken())
       .finally(() => setCheckingSession(false));
