@@ -27,17 +27,17 @@ export async function submitReview(req, res) {
   const ipHash = digest(req.ip || req.socket.remoteAddress || 'unknown');
   const submissionHash = digest([ipHash, review.title.toLowerCase(), review.content.toLowerCase()].join('|'));
   try {
-    await pool.query('INSERT INTO review_submissions (customer_name, customer_email, rating, title, content, ip_hash, submission_hash) VALUES (?, ?, ?, ?, ?, ?, ?)', [review.customerName, '', review.rating, review.title, review.content, ipHash, submissionHash]);
+    await pool.query("INSERT INTO review_submissions (customer_name, customer_email, rating, title, content, status, ip_hash, submission_hash, reviewed_at) VALUES (?, ?, ?, ?, ?, 'approved', ?, ?, UTC_TIMESTAMP())", [review.customerName, '', review.rating, review.title, review.content, ipHash, submissionHash]);
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') throw new AppError(409, 'DUPLICATE_REVIEW', 'This review has already been submitted.');
     throw error;
   }
-  res.status(201).json({ success: true, data: { submitted: true, message: 'Thank you. Your review is waiting for approval.' } });
+  res.status(201).json({ success: true, data: { submitted: true, message: 'Thank you. Your review has been published.' } });
 }
 
 export async function publicReviews(_req, res) {
   await ensureReviewSchema();
-  const [rows] = await pool.query("SELECT id, customer_name AS author, rating, title, content AS copy, created_at FROM review_submissions WHERE status = 'approved' ORDER BY reviewed_at DESC, created_at DESC LIMIT 60");
+  const [rows] = await pool.query("SELECT id, customer_name AS author, rating, title, content AS copy, created_at FROM review_submissions WHERE status <> 'rejected' ORDER BY created_at DESC LIMIT 60");
   res.setHeader('Cache-Control', 'no-cache');
   res.json({ success: true, data: { reviews: rows } });
 }

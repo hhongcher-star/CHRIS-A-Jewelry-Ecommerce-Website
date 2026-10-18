@@ -1405,3 +1405,44 @@
   .admin-preview-stage, .admin-site-preview.is-mobile .admin-preview-stage { padding: 0; }
   .admin-promo-actions { grid-template-columns: 1fr 1fr 40px; }
 }
+
+.admin-review-summary { padding: 16px 18px; border: 1px solid #decfc6; display: flex; align-items: center; gap: 13px; background: #fffdf8; color: #6d1325; }
+.admin-review-summary svg { width: 22px; }
+.admin-review-summary > div { display: grid; gap: 3px; }
+.admin-review-summary strong { font: 600 17px 'Cormorant Garamond', serif; }
+.admin-review-summary span { color: #927579; font: 10px Montserrat, sans-serif; }
+.admin-review-list { display: grid; gap: 10px; }
+.admin-review-list > article { min-height: 92px; padding: 17px 19px; border: 1px solid #decfc6; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #fffdf8; }
+.admin-review-list article > div { min-width: 0; display: grid; gap: 5px; }
+.admin-review-list article > div > span { color: #8b1830; font-size: 12px; letter-spacing: .08em; }
+.admin-review-list h2 { margin: 0; color: #430411; font: 600 21px 'Cormorant Garamond', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-review-list p { margin: 0; color: #94777a; font: 10px Montserrat, sans-serif; }
+.admin-review-list aside { display: flex; gap: 8px; }
+.admin-review-list aside button,.admin-review-view > button.danger { min-height: 36px; padding: 0 13px; border: 1px solid #6d1325; display: inline-flex; align-items: center; gap: 7px; background: #6d1325; color: white; cursor: pointer; font: 700 8px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-review-list aside button.danger,.admin-review-view > button.danger { border-color: #c4a9a5; background: transparent; color: #8d1730; }
+.admin-review-list button svg,.admin-review-view button svg { width: 14px; }
+.admin-review-view-backdrop { padding: 22px; position: fixed; z-index: 5000; inset: 0; display: grid; place-items: center; background: rgba(31,0,8,.68); backdrop-filter: blur(5px); }
+.admin-review-view { width: min(590px, 100%); max-height: calc(100vh - 44px); padding: 42px; position: relative; overflow-y: auto; box-sizing: border-box; background: #fffaf1; color: #430411; }
+.admin-review-view-close { width: 38px; height: 38px; padding: 0; position: absolute; right: 16px; top: 16px; border: 1px solid #d4beb6; display: grid; place-items: center; background: transparent; color: #6d1325; cursor: pointer; }
+.admin-review-view > p { margin: 0 0 8px; font: 700 8px Montserrat, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+.admin-review-view h2 { margin: 0 45px 8px 0; font: 500 36px/1.05 'Cormorant Garamond', serif; }
+.admin-review-view > strong { color: #8b1830; letter-spacing: .08em; }
+.admin-review-view blockquote { margin: 25px 0; padding: 20px 0; border-top: 1px solid #dfcfc7; border-bottom: 1px solid #dfcfc7; font: 18px/1.6 'Cormorant Garamond', serif; white-space: pre-wrap; }
+.admin-review-view footer { margin: 0 0 25px; padding: 0; display: flex; justify-content: space-between; background: transparent; color: #765c60; font: 10px Montserrat, sans-serif; }
+.admin-payment-window-preview { border: 1px solid #d7c8bf; background: #fffdf8; }
+.admin-payment-window-preview > header { padding: 15px 17px; border-bottom: 1px solid #e1d4cc; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.admin-payment-window-preview > header > div { display: grid; gap: 3px; }
+.admin-payment-window-preview header p,.admin-payment-window-preview header h3,.admin-payment-window-preview header span { margin: 0; }
+.admin-payment-window-preview header p { color: #9a6470; font: 700 8px Montserrat, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.admin-payment-window-preview header h3 { color: #430411; font: 600 22px 'Cormorant Garamond', serif; }
+.admin-payment-window-preview header span { color: #927579; font: 10px Montserrat, sans-serif; }
+.admin-payment-window-preview select { min-width: 190px; height: 38px; padding: 0 10px; border: 1px solid #d1bdb5; background: white; color: #6d1325; }
+.admin-payment-window-canvas { min-height: 500px; padding: 30px; display: grid; place-items: center; background: rgba(67,4,17,.84); }
+.admin-payment-window-canvas > article { width: min(420px, 100%); padding: 30px; box-sizing: border-box; background: #f8f3e9; color: #430411; text-align: center; }
+.admin-payment-window-canvas small { font: 700 8px Montserrat, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+.admin-payment-window-canvas h2 { margin: 7px 0 10px; font: 500 31px/1 'Cormorant Garamond', serif; }
+.admin-payment-window-canvas p { margin: 0 auto 14px; color: #765c60; font: 11px/1.6 Montserrat, sans-serif; white-space: pre-wrap; }
+.admin-payment-window-canvas img { width: min(240px, 78%); aspect-ratio: 1; margin: 0 auto 14px; display: block; object-fit: contain; background: white; }
+.admin-payment-window-canvas article > div { margin: 0 auto 13px; padding: 12px; display: flex; justify-content: space-between; background: rgba(67,4,17,.06); font: 700 9px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-payment-window-canvas article > button { width: 100%; min-height: 45px; border: 0; background: #6d1325; color: white; font: 700 8px Montserrat, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+@media (max-width: 720px) { .admin-review-list > article { align-items: flex-start; flex-direction: column; } .admin-payment-window-preview > header { align-items: flex-start; flex-direction: column; } .admin-payment-window-preview select { width: 100%; } .admin-payment-window-canvas { padding: 14px; } }
