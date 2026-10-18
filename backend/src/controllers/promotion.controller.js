@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { pool } from '../config/database.js';
+import { ensurePromotionSchema, pool } from '../config/database.js';
 
 const validationSchema = z.object({
   code: z.string().trim().max(50).optional().default(''),
@@ -11,19 +11,20 @@ const validationSchema = z.object({
 const phoneDigits = (value) => String(value || '').replace(/\D/g, '');
 
 export async function validatePromotion(req, res) {
+  await ensurePromotionSchema();
   const parsed = validationSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ success: false, error: { message: 'Invalid promotion request.' } });
   const { code, subtotal } = parsed.data;
   const [rows] = code
     ? await pool.query(`
-        SELECT id, code, name, discount_value, minimum_spend, apply_automatically, first_order_only,
+        SELECT id, code, name, discount_value, free_shipping, minimum_spend, apply_automatically, first_order_only,
           is_active, starts_at, ends_at, usage_limit, usage_count,
           starts_at > UTC_TIMESTAMP() AS not_started,
           ends_at < UTC_TIMESTAMP() AS expired
         FROM promotions WHERE UPPER(code) = ? ORDER BY id DESC LIMIT 1
       `, [code.toUpperCase()])
     : await pool.query(`
-        SELECT id, code, name, discount_value, minimum_spend, apply_automatically, first_order_only,
+        SELECT id, code, name, discount_value, free_shipping, minimum_spend, apply_automatically, first_order_only,
           is_active, starts_at, ends_at, usage_limit, usage_count, 0 AS not_started, 0 AS expired
         FROM promotions
         WHERE apply_automatically = TRUE AND is_active = TRUE

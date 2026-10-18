@@ -587,7 +587,7 @@ function PromotionModal({ mode, promotion, onClose, onCreated }) {
   const local = (date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const editing = Boolean(promotion);
   const automatic = editing ? Boolean(promotion.apply_automatically) : mode === 'automatic';
-  const [form, setForm] = useState({ name: promotion?.name || '', code: promotion?.code || '', discountValue: promotion?.discount_value ?? 10, minimumSpend: promotion?.minimum_spend ?? 0, startsAt: promotion?.starts_at ? local(new Date(promotion.starts_at)) : local(now), endsAt: promotion?.ends_at ? local(new Date(promotion.ends_at)) : local(later), applyAutomatically: automatic, firstOrderOnly: Boolean(promotion?.first_order_only), usageLimit: promotion?.usage_limit ?? '', isActive: promotion ? Boolean(promotion.is_active) : true });
+  const [form, setForm] = useState({ name: promotion?.name || '', code: promotion?.code || '', discountValue: promotion?.discount_value ?? 10, freeShipping: Boolean(promotion?.free_shipping), minimumSpend: promotion?.minimum_spend ?? 0, startsAt: promotion?.starts_at ? local(new Date(promotion.starts_at)) : local(now), endsAt: promotion?.ends_at ? local(new Date(promotion.ends_at)) : local(later), applyAutomatically: automatic, firstOrderOnly: Boolean(promotion?.first_order_only), usageLimit: promotion?.usage_limit ?? '', isActive: promotion ? Boolean(promotion.is_active) : true });
   const [saving, setSaving] = useState(false); const [error, setError] = useState('');
   const update = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.type === 'checkbox' ? event.target.checked : event.target.value }));
   useEffect(() => { const close = (event) => { if (event.key === 'Escape') onClose(); }; document.body.style.overflow = 'hidden'; window.addEventListener('keydown', close); return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', close); }; }, [onClose]);
@@ -599,6 +599,7 @@ function PromotionModal({ mode, promotion, onClose, onCreated }) {
         <label>Promotion name<input value={form.name} onChange={update('name')} placeholder={automatic ? 'e.g. Anniversary boutique sale' : 'e.g. VIP welcome offer'} required /></label>
         {!automatic && <label>Promo code<input value={form.code} onChange={update('code')} placeholder="e.g. CHRISEA15" required /></label>}
         <div className="admin-promo-grid"><label>Discount (%)<input type="number" min="1" max="100" value={form.discountValue} onChange={update('discountValue')} required /></label><label>Minimum spend (RM)<input type="number" min="0" value={form.minimumSpend} onChange={update('minimumSpend')} /></label><label>Usage limit<input type="number" min="1" step="1" value={form.usageLimit} onChange={update('usageLimit')} placeholder="Unlimited" /><small>Leave empty for unlimited uses.</small></label><label>Starts<input type="datetime-local" value={form.startsAt} onChange={update('startsAt')} required /></label><label>Ends<input type="datetime-local" value={form.endsAt} onChange={update('endsAt')} required /></label></div>
+        <label className="admin-promo-rule"><input type="checkbox" checked={form.freeShipping} onChange={update('freeShipping')} /><span><strong>Free shipping</strong><small>When customers use this promotion, the shipping charge becomes RM 0.</small></span></label>
         {!automatic && <label className="admin-promo-rule"><input type="checkbox" checked={form.firstOrderOnly} onChange={update('firstOrderOnly')} /><span><strong>First order only</strong><small>Block customers with an existing non-cancelled order.</small></span></label>}
         <label className="admin-promo-rule"><input type="checkbox" checked={form.isActive} onChange={update('isActive')} /><span><strong>Promotion active</strong><small>Customers can use this offer during its scheduled dates.</small></span></label>
         {error && <p className="admin-form-error">{error}</p>}
@@ -769,7 +770,8 @@ const contentPages = {
       hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' },
       recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] },
       benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] },
-      paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }]
+      paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }],
+      shippingPrice: 15
     },
     fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['recommendations.eyebrow','Recommendations small title'],['recommendations.title','Recommendations title'],['recommendations.productIds','Complete the Look — choose 4 products','products'],['benefits.items.0.title','Benefit 1 title'],['benefits.items.0.text','Benefit 1 description'],['benefits.items.1.title','Benefit 2 title'],['benefits.items.1.text','Benefit 2 description'],['benefits.items.2.title','Benefit 3 title'],['benefits.items.2.text','Benefit 3 description'],['paymentMethods','Payment methods','reviews']]
   },
@@ -1025,6 +1027,8 @@ function WebsiteContent({ onStartGuide }) {
         const paymentMethods = Array.isArray(content.paymentMethods) ? content.paymentMethods : [];
         if (!paymentMethods.length) throw new Error('Keep at least one payment method.');
         if (paymentMethods.some((method) => !method.name?.trim() || (!method.image?.trim() && !method.information?.trim()))) throw new Error('Every payment method needs a name and either a photo or payment information.');
+        const shippingPrice = Number(content.shippingPrice);
+        if (!Number.isFinite(shippingPrice) || shippingPrice < 0 || shippingPrice > 10000) throw new Error('Enter a valid shipping price between RM 0 and RM 10,000.');
       }
       if (publish) await api(`/admin/content/${page}/publish`, { method: 'POST', body: JSON.stringify({ content }) });
       else await api(`/admin/content/${page}`, { method: 'PUT', body: JSON.stringify({ content }) });
@@ -1082,6 +1086,7 @@ function WebsiteContent({ onStartGuide }) {
           {!method.image?.trim() && !method.information?.trim() && <p className="admin-form-error">Add a photo or payment information before publishing.</p>}
         </article>)}
         <button className="admin-add-review" type="button" onClick={() => setContent((current) => writeContentPath(current, path, [...(readContentPath(current, path) || []), { id: `payment-${Date.now()}`, name: '', kicker: '', title: '', information: '', image: '', confirmLabel: 'Continue' }]))}><Plus /> Add payment method</button>
+        <div className="admin-shipping-price"><div><strong>Shipping price</strong><span>Enter the delivery charge in RM. Publish changes to update the cart, payment total and new orders.</span></div><label>RM <input type="number" min="0" max="10000" step="0.01" value={content.shippingPrice ?? 15} onChange={(event) => setContent((current) => ({ ...current, shippingPrice: event.target.value }))} /></label></div>
         <small>{methods.length} added · Minimum 1</small>
       </div>;
     }

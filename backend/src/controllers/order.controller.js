@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { ensurePaymentSchema, pool } from '../config/database.js';
+import { ensurePaymentSchema, ensurePromotionSchema, pool } from '../config/database.js';
 import { AppError } from '../errors/app-error.js';
 
 const checkoutSchema = z.object({
@@ -25,6 +25,7 @@ const checkoutSchema = z.object({
 
 export async function createOrder(req, res) {
   await ensurePaymentSchema();
+  await ensurePromotionSchema();
   const parsed = checkoutSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError(400, 'INVALID_CHECKOUT', 'Please complete your contact, delivery and order information.');
 
@@ -80,7 +81,7 @@ export async function createOrder(req, res) {
     if (promoCode) promotionParams.push(promoCode);
     promotionParams.push(subtotal);
     const [promotionRows] = await connection.query(`
-      SELECT id, discount_value, minimum_spend, first_order_only FROM promotions
+      SELECT id, discount_value, free_shipping, minimum_spend, first_order_only FROM promotions
       WHERE ${promotionCondition} AND is_active = TRUE AND starts_at <= UTC_TIMESTAMP() AND ends_at >= UTC_TIMESTAMP()
         AND (usage_limit IS NULL OR usage_count < usage_limit) AND minimum_spend <= ?
       ORDER BY discount_value DESC, id DESC LIMIT 1 FOR UPDATE
@@ -97,7 +98,16 @@ export async function createOrder(req, res) {
       if (previousOrders.length) throw new AppError(409, 'FIRST_ORDER_PROMO_ALREADY_USED', 'This promotion is available for first orders only.');
     }
     const discountTotal = promotion && subtotal >= Number(promotion.minimum_spend) ? Math.min(subtotal, subtotal * Number(promotion.discount_value) / 100) : 0;
-    const shippingTotal = subtotal - discountTotal >= 200 ? 0 : 15;
+    const [cartContentRows] = await connection.query("SELECT published_content FROM site_content WHERE page_key = 'cart' LIMIT 1");
+    let configuredShippingPrice = 15;
+    try {
+      const cartContent = typeof cartContentRows[0]?.published_content === 'string' ? JSON.parse(cartContentRows[0].published_content) : cartContentRows[0]?.published_content;
+      const publishedPrice = Number(cartContent?.shippingPrice);
+      if (Number.isFinite(publishedPrice) && publishedPrice >= 0 && publishedPrice <= 10000) configuredShippingPrice = publishedPrice;
+    } catch {
+      configuredShippingPrice = 15;
+    }
+    const shippingTotal = promotion?.free_shipping || subtotal - discountTotal >= 200 ? 0 : configuredShippingPrice;
     const grandTotal = subtotal - discountTotal + shippingTotal;
 
     const orderNumber = `CHR-${Date.now().toString().slice(-10)}-${crypto.randomInt(10, 100)}`;

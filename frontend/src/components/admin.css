@@ -1446,3 +1446,10 @@
 .admin-payment-window-canvas article > div { margin: 0 auto 13px; padding: 12px; display: flex; justify-content: space-between; background: rgba(67,4,17,.06); font: 700 9px Montserrat, sans-serif; text-transform: uppercase; }
 .admin-payment-window-canvas article > button { width: 100%; min-height: 45px; border: 0; background: #6d1325; color: white; font: 700 8px Montserrat, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 @media (max-width: 720px) { .admin-review-list > article { align-items: flex-start; flex-direction: column; } .admin-payment-window-preview > header { align-items: flex-start; flex-direction: column; } .admin-payment-window-preview select { width: 100%; } .admin-payment-window-canvas { padding: 14px; } }
+.admin-shipping-price { padding: 18px; border: 1px solid #d7c8bf; display: flex; align-items: center; justify-content: space-between; gap: 24px; background: #f7efe4; }
+.admin-shipping-price > div { display: grid; gap: 5px; }
+.admin-shipping-price strong { color: #430411; font: 600 19px 'Cormorant Garamond', serif; }
+.admin-shipping-price span { color: #80666a; font: 10px/1.5 Montserrat, sans-serif; }
+.admin-shipping-price label { min-width: 190px; display: flex; align-items: center; gap: 9px; color: #6d1325; font: 700 11px Montserrat, sans-serif; }
+.admin-shipping-price input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #cdb8af; background: white; color: #430411; font: 16px Montserrat, sans-serif; }
+@media (max-width: 720px) { .admin-shipping-price { align-items: stretch; flex-direction: column; } .admin-shipping-price label { min-width: 0; } }

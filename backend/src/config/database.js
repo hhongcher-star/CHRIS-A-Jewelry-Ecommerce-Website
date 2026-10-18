@@ -76,6 +76,26 @@ export function ensurePaymentSchema() {
   return paymentSchemaPromise;
 }
 
+let promotionSchemaPromise;
+
+export function ensurePromotionSchema() {
+  if (!promotionSchemaPromise) {
+    promotionSchemaPromise = (async () => {
+      const [columns] = await pool.query(`
+        SELECT COLUMN_NAME AS columnName
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'promotions' AND COLUMN_NAME = 'free_shipping'
+        LIMIT 1
+      `);
+      if (!columns.length) await pool.query('ALTER TABLE promotions ADD COLUMN free_shipping BOOLEAN NOT NULL DEFAULT FALSE AFTER discount_value');
+    })().catch((error) => {
+      promotionSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return promotionSchemaPromise;
+}
+
 export async function closeDatabase() {
   await pool.end();
 }

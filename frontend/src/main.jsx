@@ -1070,14 +1070,16 @@ function ReviewsPage() {
 }
 
 function CartPage() {
-  const cartContent = useSiteContent('cart', { hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' }, recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] }, benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] }, paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }] });
+  const cartContent = useSiteContent('cart', { hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' }, recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] }, benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] }, paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }], shippingPrice: 15 });
   const paymentMethods = (Array.isArray(cartContent.paymentMethods) ? cartContent.paymentMethods : []).filter((method) => method?.name?.trim() && (method.image?.trim() || method.information?.trim()));
   const availablePaymentMethods = paymentMethods.length ? paymentMethods : [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }];
+  const shippingPrice = Math.max(0, Number(cartContent.shippingPrice ?? 15) || 0);
   const [cart, setCart] = useState(() => readCart());
   const [promo, setPromo] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [promoSuccess, setPromoSuccess] = useState(null);
   const [discount, setDiscount] = useState(0);
+  const [freeShipping, setFreeShipping] = useState(false);
   const [checkout, setCheckout] = useState({ fullName: '', email: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', postcode: '', paymentMethod: 'touch-n-go-qr' });
   const [checkoutError, setCheckoutError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -1118,18 +1120,24 @@ function CartPage() {
     if (!subtotal || promo.trim()) return;
     fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: '' }) })
       .then((response) => response.json()).then((result) => {
-        if (result.data?.valid) { setDiscount(Number(result.data.discountTotal) / subtotal); setPromoMessage(`${result.data.promotion.name} applied automatically — ${Number(result.data.promotion.discount_value)}% off`); }
+        if (result.data?.valid) {
+          const shipsFree = Boolean(result.data.promotion.free_shipping);
+          setDiscount(Number(result.data.discountTotal) / subtotal);
+          setFreeShipping(shipsFree);
+          setPromoMessage(`${result.data.promotion.name} applied automatically — ${Number(result.data.promotion.discount_value)}% off${shipsFree ? ' + free shipping' : ''}`);
+        }
       }).catch(() => {});
   }, [subtotal, promo]);
   const applyPromo = async () => {
     const code = promo.trim().toUpperCase();
-    if (!code) { setDiscount(0); setPromoMessage('Enter a promo code'); return; }
-    if (checkout.phone.replace(/\D/g, '').length < 7) { setDiscount(0); setPromoMessage('Enter your phone number first so we can check this promotion.'); return; }
+    if (!code) { setDiscount(0); setFreeShipping(false); setPromoMessage('Enter a promo code'); return; }
+    if (checkout.phone.replace(/\D/g, '').length < 7) { setDiscount(0); setFreeShipping(false); setPromoMessage('Enter your phone number first so we can check this promotion.'); return; }
     try {
       const response = await fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code, email: checkout.email.trim(), phone: checkout.phone.trim() }) });
       const result = await response.json();
       if (!result.data?.valid) {
         setDiscount(0);
+        setFreeShipping(false);
         const promoReasons = {
           INVALID_CODE: 'This promo code does not exist. Please check the spelling and try again.',
           INACTIVE: 'This promo code is currently inactive.',
@@ -1144,14 +1152,17 @@ function CartPage() {
         return;
       }
       setDiscount(Number(result.data.discountTotal) / Math.max(subtotal, 1));
-      setPromoMessage(`${code} applied — ${Number(result.data.promotion.discount_value)}% off`);
+      const shipsFree = Boolean(result.data.promotion.free_shipping);
+      setFreeShipping(shipsFree);
+      setPromoMessage(`${code} applied — ${Number(result.data.promotion.discount_value)}% off${shipsFree ? ' + free shipping' : ''}`);
       setPromoSuccess({
         code,
         name: result.data.promotion.name,
         percentage: Number(result.data.promotion.discount_value),
         saving: Number(result.data.discountTotal),
+        freeShipping: shipsFree,
       });
-    } catch { setDiscount(0); setPromoMessage('Unable to validate this promo code'); }
+    } catch { setDiscount(0); setFreeShipping(false); setPromoMessage('Unable to validate this promo code'); }
   };
   const updateCheckout = (key) => (event) => { setCheckout((current) => ({ ...current, [key]: event.target.value })); setCheckoutError(''); };
   const openPayment = () => {
@@ -1208,7 +1219,7 @@ function CartPage() {
             <section className="cart-recommendations"><p>{cartContent.recommendations.eyebrow}</p><h2>{cartContent.recommendations.title}</h2><div>{recommendations.map((product) => <article key={product.id || product.name}><a href={productUrl(product)}><img src={product.image} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</a><h3>{product.name}</h3><span>{product.price}{product.discountPercent > 0 && <del>{product.originalPrice}</del>}</span><button disabled={product.stock === 0} onClick={(event) => addCartItemAnimated(event, product, 1, setCart)}>{product.stock === 0 ? 'Sold out' : 'Add to cart'}</button></article>)}</div></section>
           </div>
 
-          <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{total >= 200 ? 'Complimentary' : 'RM 15.00'}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
+          <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{freeShipping || total >= 200 || shippingPrice === 0 ? 'Complimentary' : `RM ${shippingPrice.toFixed(2)}`}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (freeShipping || total >= 200 ? 0 : shippingPrice)).toFixed(2)}</strong></div>
             {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email <small>Optional</small><input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" required /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<div className="cart-payment-method">Touch 'n Go QR</div></label></div>}
             {cartItems.length > 0 && <label className="cart-payment-picker">Payment method<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}>{availablePaymentMethods.map((method, index) => <option value={method.id} key={method.id || index}>{method.name}</option>)}</select></label>}
             {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
@@ -1229,7 +1240,7 @@ function CartPage() {
           <div className="promo-success-ticket">
             <span>{promoSuccess.name}</span>
             <strong>{promoSuccess.code}</strong>
-            <small>{promoSuccess.percentage}% off · You save RM {promoSuccess.saving.toFixed(2)}</small>
+            <small>{promoSuccess.percentage}% off{promoSuccess.freeShipping ? ' · Free shipping' : ''} · You save RM {promoSuccess.saving.toFixed(2)}</small>
           </div>
           <button className="promo-success-done" type="button" onClick={() => setPromoSuccess(null)}>Continue checkout <ArrowRight size={14} /></button>
         </section>
@@ -1241,7 +1252,7 @@ function CartPage() {
           <h2 id="qr-payment-title">{selectedPayment.title || selectedPayment.name}</h2>
           {selectedPayment.information && <p className="qr-payment-copy">{selectedPayment.information}</p>}
           {selectedPayment.image && <div className="qr-payment-code"><img src={selectedPayment.image} alt={`${selectedPayment.name} payment information`} /></div>}
-          <div className="qr-payment-total"><span>Amount to transfer</span><strong>RM {(total + (total >= 200 ? 0 : 15)).toFixed(2)}</strong></div>
+          <div className="qr-payment-total"><span>Amount to transfer</span><strong>RM {(total + (freeShipping || total >= 200 ? 0 : shippingPrice)).toFixed(2)}</strong></div>
           <button className="qr-payment-confirm" type="button" disabled={placingOrder} onClick={proceedToReceipt}>{placingOrder ? 'Creating your order…' : selectedPayment.confirmLabel || 'Continue'} {!placingOrder && <ArrowRight size={14} />}</button>
           <button className="qr-payment-cancel" type="button" disabled={placingOrder} onClick={() => setPaymentOpen(false)}>Pay later</button>
           <small>Please only continue after the transfer is complete. Your order will be recorded as pending payment confirmation.</small>
