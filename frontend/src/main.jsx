@@ -3,13 +3,11 @@ import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowRight,
-  Camera,
   Download,
   Gem,
   Gift,
   Heart,
   House,
-  Mail,
   Menu,
   Search,
   Share2,
@@ -957,19 +955,16 @@ function ProductPage() {
   );
 }
 
-const reviewSamples = [
-  { title: 'So elegant and timeless', copy: 'The finish feels beautifully considered and the delicate scale makes it easy to wear every day.', image: '/assets/reviews/review-necklace.jpg', product: 'Enamel Pendant Necklace' },
-  { title: 'Perfect for everyday wear', copy: 'Minimal, refined and easy to style. It adds just enough detail without ever feeling too much.', image: '/assets/reviews/review-styling.jpg', product: 'Statement Zircon Ring' },
-  { title: 'A lovely finishing touch', copy: 'Lightweight, polished and quietly distinctive—the kind of piece that completes a look.', image: '/assets/reviews/review-earrings.jpg', product: 'Mother-of-Pearl Earrings' },
-  { title: 'Beautifully made', copy: 'The proportions are delicate and the presentation makes the whole experience feel special.', image: '/assets/reviews/review-styling.jpg', product: 'Four-Leaf Zircon Ring' },
-  { title: 'A piece to cherish', copy: 'A romantic little detail with a modern feel. It layers beautifully with pieces I already own.', image: '/assets/reviews/review-necklace.jpg', product: 'Vintage Heart Necklace' },
-  { title: 'Simply perfect', copy: 'Exactly the understated sparkle I was looking for, with a finish that feels refined and wearable.', image: '/assets/reviews/review-earrings.jpg', product: 'Zircon Button Earrings' },
-];
-
 function ReviewsPage() {
   const [rating, setRating] = useState('All');
-  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words' }, social: { eyebrow: 'Spotted on you', title: 'Styled by You', description: 'A glimpse of how our community wears CHRISÉA. Share your look and become part of the story.', image1: '/assets/reviews/review-earrings.jpg', image2: '/assets/reviews/review-styling.jpg', image3: '/assets/reviews/review-necklace.jpg' }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', image: '/assets/reviews/review-styling.jpg', instagramLabel: 'Instagram', instagramValue: '@chrisea.jewelry', instagramHref: 'https://instagram.com/chrisea.jewelry', emailLabel: 'Email', emailValue: 'hello@chrisea.com' } });
+  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Instagram', value: '@chrisea.jewelry', href: 'https://instagram.com/chrisea.jewelry' }, { label: 'Email', value: 'hello@chrisea.com', href: 'mailto:hello@chrisea.com' }] } });
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
+  const reviews = Array.isArray(reviewsContent.feed.items) ? reviewsContent.feed.items : [];
+  const visibleReviews = reviews.filter((review) => {
+    if (rating === 'All') return true;
+    if (rating === 'With Photos') return Boolean(review.image);
+    return Number(review.rating || 5) === Number(rating[0]);
+  });
   return (
     <div className="page-shell reviews-page">
       <Header />
@@ -981,24 +976,20 @@ function ReviewsPage() {
         </section>
 
         <section className="reviews-feed section-pad">
-          <div className="reviews-feed-head"><div><p>{reviewsContent.feed.eyebrow}</p><h2>{reviewsContent.feed.title}</h2></div><span>Sample review layout</span></div>
+          <div className="reviews-feed-head"><div><p>{reviewsContent.feed.eyebrow}</p><h2>{reviewsContent.feed.title}</h2></div><span>{reviews.length} customer {reviews.length === 1 ? 'review' : 'reviews'}</span></div>
           <div className="reviews-toolbar" aria-label="Filter reviews">{filters.map((item) => <button className={rating === item ? 'is-active' : ''} onClick={() => setRating(item)} key={item}>{item}</button>)}</div>
           <div className="reviews-grid">
-            {reviewSamples.map((review, index) => <article className="review-card" key={`${review.title}-${index}`}>
-              <img src={review.image} alt="Jewellery styling detail" />
-              <div className="review-card-copy"><span className="review-stars">★★★★★</span><h3>{review.title}</h3><p>{review.copy}</p><footer><strong>Community member</strong><span>● Verified purchase</span></footer><small>{review.product}</small></div>
+            {visibleReviews.map((review, index) => <article className={`review-card ${review.image ? '' : 'is-text-only'}`} key={review.id || `${review.title}-${index}`}>
+              {review.image && <img src={review.image} alt={review.product || 'Customer review'} />}
+              <div className="review-card-copy"><span className="review-stars">{'★'.repeat(Number(review.rating || 5))}{'☆'.repeat(5 - Number(review.rating || 5))}</span><h3>{review.title}</h3><p>{review.copy}</p><footer><strong>{review.author || 'Customer'}</strong><span>● Verified purchase</span></footer>{review.product && <small>{review.product}</small>}</div>
             </article>)}
+            {!visibleReviews.length && <div className="reviews-empty"><Heart /><h3>{reviews.length ? 'No reviews match this filter.' : 'Customer stories are coming soon.'}</h3><p>{reviews.length ? 'Choose another rating to see more reviews.' : 'Genuine customer reviews will appear here once they are published.'}</p></div>}
           </div>
-        </section>
-
-        <section className="reviews-social section-pad">
-          <div className="reviews-social-copy"><p>{reviewsContent.social.eyebrow}</p><h2>{reviewsContent.social.title}</h2><span /><p>{reviewsContent.social.description}</p><a href="/#contact">Tag @chrisea.jewelry <ArrowRight size={14} /></a></div>
-          <div className="reviews-social-grid"><ResponsiveContentImage content={reviewsContent} path="social.image1" src={reviewsContent.social.image1} alt="Gold earrings styled by the community" /><ResponsiveContentImage content={reviewsContent} path="social.image2" src={reviewsContent.social.image2} alt="Gold ring styling detail" /><ResponsiveContentImage content={reviewsContent} path="social.image3" src={reviewsContent.social.image3} alt="Fine necklace styling detail" /></div>
         </section>
 
         <section className="reviews-cta">
           <div className="reviews-cta-image"><ResponsiveContentImage content={reviewsContent} path="cta.image" src={reviewsContent.cta.image} alt="CHRISÉA jewellery styled by our community" /></div>
-          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a className="reviews-cta-button" href={`mailto:${reviewsContent.cta.emailValue}`}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a><div className="reviews-cta-links"><a href={reviewsContent.cta.instagramHref} target="_blank" rel="noreferrer"><Camera /><small>{reviewsContent.cta.instagramLabel}</small><strong>{reviewsContent.cta.instagramValue}</strong></a><a href={`mailto:${reviewsContent.cta.emailValue}`}><Mail /><small>{reviewsContent.cta.emailLabel}</small><strong>{reviewsContent.cta.emailValue}</strong></a></div></div>
+          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a className="reviews-cta-button" href={reviewsContent.cta.buttonHref}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a><div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => <a href={link.href} target={link.href?.startsWith('http') ? '_blank' : undefined} rel={link.href?.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><Share2 /><small>{link.label}</small><strong>{link.value}</strong></a>)}</div></div>
         </section>
       </main>
       <SiteFooter />
@@ -1521,7 +1512,7 @@ function SiteRouter() {
       shop: { promotion: '.shop-promotion', favourites: '.sale-favorites', catalogue: '.shop-catalog' },
       cart: { hero: '.cart-hero', recommendations: '.cart-recommendations', benefits: '.cart-benefits' },
       about: { hero: '.about-hero', story: '.about-origin', values: '.about-values', general: '.about-quote', cta: '.about-cta' },
-      reviews: { hero: '.reviews-hero', feed: '.reviews-feed', social: '.reviews-social', cta: '.reviews-cta' },
+      reviews: { hero: '.reviews-hero', feed: '.reviews-feed', cta: '.reviews-cta' },
       announcement: { general: '.announcement' },
       footer: { general: '#contact', faq: '.care-modal-panel', shipping: '.care-modal-panel', returns: '.care-modal-panel' }
     };

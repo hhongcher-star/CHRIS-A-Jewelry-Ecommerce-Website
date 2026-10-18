@@ -1129,6 +1129,49 @@
 .admin-order-field { display: grid; gap: 12px; }
 .admin-order-field > p { margin: 0; padding: 13px 15px; border: 1px solid rgba(67,4,17,.14); background: #f7efe4; color: rgba(67,4,17,.72); font: 12px/1.6 Arial,sans-serif; }
 .admin-order-field > p strong { color: #430411; }
+.admin-review-editor { display: grid; gap: 14px; }
+.admin-review-editor > article { padding: 18px; border: 1px solid #d7c8bf; display: grid; gap: 15px; background: #fffdf8; }
+.admin-review-editor > article > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.admin-review-editor > article > header > div { display: grid; gap: 3px; }
+.admin-review-editor > article > header strong { color: #430411; font: 600 17px 'Cormorant Garamond', serif; }
+.admin-review-editor > article > header small { color: #8e6e70; font: 10px Montserrat, sans-serif; }
+.admin-review-editor > article > header button { min-height: 34px; padding: 0 12px; border: 1px solid #b99d96; display: inline-flex; align-items: center; gap: 7px; background: transparent; color: #7c1428; cursor: pointer; font: 700 9px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-review-editor > article > header button svg { width: 14px; }
+.admin-review-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.admin-review-fields label { display: grid; gap: 7px; color: #4b0713; font: 600 10px Montserrat, sans-serif; }
+.admin-review-fields label.wide { grid-column: 1 / -1; }
+.admin-review-fields input,.admin-review-fields textarea,.admin-review-fields select { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #d7c8bf; background: #fffdf8; color: #4b0713; font: 15px 'Cormorant Garamond', serif; }
+.admin-review-fields select { height: 42px; }
+.admin-review-image-upload input { display: none; }
+.admin-review-image-upload > span { min-height: 42px; padding: 0 12px; border: 1px solid #6d1325; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: #6d1325; }
+.admin-review-image-upload svg { width: 16px; }
+.admin-review-image-preview { width: 150px; height: 105px; object-fit: cover; border: 1px solid #d7c8bf; }
+.admin-review-empty { min-height: 150px; padding: 25px; border: 1px dashed #cdb9ad; display: grid; place-items: center; align-content: center; gap: 7px; color: #8e6e70; text-align: center; }
+.admin-review-empty svg { width: 28px; }
+.admin-review-empty strong { color: #430411; font: 500 22px 'Cormorant Garamond', serif; }
+.admin-review-empty span { max-width: 520px; font: 11px/1.55 Montserrat, sans-serif; }
+.admin-add-review { min-height: 45px; border: 1px solid #6d1325; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #6d1325; color: #fffaf1; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.admin-add-review svg { width: 16px; }
+.admin-social-editor { display: grid; gap: 13px; }
+.admin-social-help { padding: 15px; border: 1px solid rgba(109,19,37,.18); display: grid; grid-template-columns: 24px 1fr; gap: 11px; background: #f7efe4; color: #6d1325; }
+.admin-social-help > svg { width: 21px; }
+.admin-social-help > div { display: grid; gap: 5px; }
+.admin-social-help strong { font: 700 11px Montserrat, sans-serif; }
+.admin-social-help span { color: rgba(67,4,17,.72); font: 11px/1.6 Arial, sans-serif; }
+.admin-social-editor > article { padding: 16px; border: 1px solid #d7c8bf; display: grid; gap: 13px; background: #fffdf8; }
+.admin-social-editor > article > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.admin-social-editor > article > header strong { color: #430411; font: 600 16px 'Cormorant Garamond', serif; }
+.admin-social-editor > article > header button { min-height: 32px; padding: 0 10px; border: 1px solid #b99d96; display: inline-flex; align-items: center; gap: 6px; background: transparent; color: #7c1428; cursor: pointer; font: 700 8px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-social-editor > article > header button:disabled { cursor: not-allowed; opacity: .38; }
+.admin-social-editor > article > header svg { width: 13px; }
+.admin-social-editor > article > div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.admin-social-editor > article label { display: grid; gap: 6px; color: #4b0713; font: 600 10px Montserrat, sans-serif; }
+.admin-social-editor > article label.wide { grid-column: 1 / -1; }
+.admin-social-editor input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #d7c8bf; background: #fffdf8; color: #4b0713; font: 15px 'Cormorant Garamond', serif; }
+.admin-add-social { min-height: 44px; border: 1px solid #6d1325; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #6d1325; color: #fffaf1; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.admin-add-social:disabled { cursor: not-allowed; opacity: .45; }
+.admin-add-social svg { width: 15px; }
+.admin-social-editor > small { color: #8e6e70; font: 10px Montserrat, sans-serif; }
 .admin-content-editor { border: 1px solid #dfd2c8; background: #fbf7ef; }
 .admin-content-editor > header { padding: 24px 28px; border-bottom: 1px solid #dfd2c8; display: flex; justify-content: space-between; align-items: end; gap: 20px; }
 .admin-content-editor > header p { margin: 0 0 5px; color: #a65d67; font: 600 10px Montserrat, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
@@ -1202,6 +1245,10 @@
 .admin-visual-controls .admin-content-image-preview.is-desktop { aspect-ratio: 16 / 6; }
 .admin-visual-controls .admin-content-image-preview.is-mobile { width: min(280px, 100%); aspect-ratio: 9 / 16; margin: 0 auto; }
 @media (max-width: 760px) {
+  .admin-review-fields { grid-template-columns: 1fr; }
+  .admin-review-fields label.wide { grid-column: auto; }
+  .admin-social-editor > article > div { grid-template-columns: 1fr; }
+  .admin-social-editor > article label.wide { grid-column: auto; }
   .admin-device-image-grid { grid-template-columns: 1fr; }
   .admin-content-fields { padding: 18px; grid-template-columns: 1fr; }
   .admin-content-fields > label.wide { grid-column: auto; }
