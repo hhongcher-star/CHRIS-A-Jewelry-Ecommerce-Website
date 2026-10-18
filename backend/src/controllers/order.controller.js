@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { pool } from '../config/database.js';
+import { ensurePaymentSchema, pool } from '../config/database.js';
 import { AppError } from '../errors/app-error.js';
 
 const checkoutSchema = z.object({
@@ -15,7 +15,7 @@ const checkoutSchema = z.object({
     state: z.string().trim().min(2).max(100),
     postcode: z.string().trim().min(4).max(20),
   }),
-  paymentMethod: z.enum(['bank_transfer', 'tng_qr']).default('bank_transfer'),
+  paymentMethod: z.string().trim().min(1).max(120).default('Bank transfer'),
   promoCode: z.string().trim().max(50).optional().default(''),
   items: z.array(z.object({
     variantId: z.coerce.number().int().positive(),
@@ -24,6 +24,7 @@ const checkoutSchema = z.object({
 }).strict();
 
 export async function createOrder(req, res) {
+  await ensurePaymentSchema();
   const parsed = checkoutSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError(400, 'INVALID_CHECKOUT', 'Please complete your contact, delivery and order information.');
 

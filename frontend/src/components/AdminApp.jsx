@@ -749,9 +749,10 @@ const contentPages = {
     defaults: {
       hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' },
       recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] },
-      benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] }
+      benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] },
+      paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }]
     },
-    fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['recommendations.eyebrow','Recommendations small title'],['recommendations.title','Recommendations title'],['recommendations.productIds','Complete the Look — choose 4 products','products'],['benefits.items.0.title','Benefit 1 title'],['benefits.items.0.text','Benefit 1 description'],['benefits.items.1.title','Benefit 2 title'],['benefits.items.1.text','Benefit 2 description'],['benefits.items.2.title','Benefit 3 title'],['benefits.items.2.text','Benefit 3 description']]
+    fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['recommendations.eyebrow','Recommendations small title'],['recommendations.title','Recommendations title'],['recommendations.productIds','Complete the Look — choose 4 products','products'],['benefits.items.0.title','Benefit 1 title'],['benefits.items.0.text','Benefit 1 description'],['benefits.items.1.title','Benefit 2 title'],['benefits.items.1.text','Benefit 2 description'],['benefits.items.2.title','Benefit 3 title'],['benefits.items.2.text','Benefit 3 description'],['paymentMethods','Payment methods','reviews']]
   },
   reviews: {
     label: 'Reviews',
@@ -1002,6 +1003,11 @@ function WebsiteContent({ onStartGuide }) {
     savingRef.current = true;
     setSaving(true);
     try {
+      if (page === 'cart') {
+        const paymentMethods = Array.isArray(content.paymentMethods) ? content.paymentMethods : [];
+        if (!paymentMethods.length) throw new Error('Keep at least one payment method.');
+        if (paymentMethods.some((method) => !method.name?.trim() || (!method.image?.trim() && !method.information?.trim()))) throw new Error('Every payment method needs a name and either a photo or payment information.');
+      }
       if (publish) await api(`/admin/content/${page}/publish`, { method: 'POST', body: JSON.stringify({ content }) });
       else await api(`/admin/content/${page}`, { method: 'PUT', body: JSON.stringify({ content }) });
       setStatus(publish ? 'Published — the storefront is now updated.' : 'Draft saved.');
@@ -1033,6 +1039,32 @@ function WebsiteContent({ onStartGuide }) {
     return selected.length ? selected : catalogue.products.slice(path.startsWith('editorial') ? 4 : 0, path.startsWith('editorial') ? 7 : limit);
   };
   const productChooser = (path) => {
+    if (path === 'paymentMethods') {
+      const methods = readContentPath(content, path) || [];
+      const updateMethod = (index, key, value) => setContent((current) => {
+        const next = cloneContent(current);
+        readContentPath(next, path)[index][key] = value;
+        return next;
+      });
+      return <div className="admin-payment-method-editor">
+        <div className="admin-social-help"><CircleHelp /><div><strong>How are payment methods used?</strong><span>Customers choose one method in the cart. Its photo and information appear in the payment window, and the selected method is recorded with the order for the admin to review. Keep at least one method. Each method needs either a photo or written information; both are also allowed.</span></div></div>
+        {methods.map((method, index) => <article key={method.id || index}>
+          <header><div><strong>Payment method {index + 1}</strong><small>{method.name || 'New payment method'}</small></div><button type="button" disabled={methods.length <= 1} onClick={() => setContent((current) => writeContentPath(current, path, readContentPath(current, path).filter((_, itemIndex) => itemIndex !== index)))}><Trash2 /> Delete</button></header>
+          <div className="admin-payment-method-fields">
+            <label>Method name<input value={method.name || ''} onChange={(event) => updateMethod(index, 'name', event.target.value)} placeholder="e.g. Touch 'n Go QR" /></label>
+            <label>Small title<input value={method.kicker || ''} onChange={(event) => updateMethod(index, 'kicker', event.target.value)} placeholder="e.g. DuitNow QR payment" /></label>
+            <label className="wide">Window title<input value={method.title || ''} onChange={(event) => updateMethod(index, 'title', event.target.value)} placeholder="e.g. Scan to complete your payment" /></label>
+            <label className="wide">Payment information<textarea rows="4" value={method.information || ''} onChange={(event) => updateMethod(index, 'information', event.target.value)} placeholder="Bank account, recipient name, payment instructions or other information" /></label>
+            <label>Confirmation button<input value={method.confirmLabel || ''} onChange={(event) => updateMethod(index, 'confirmLabel', event.target.value)} placeholder="I have paid — continue" /></label>
+            <label className="admin-review-image-upload">Payment photo<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={upload(`${path}.${index}.image`, 'desktop')} /><span><ImagePlus /> {uploading === `${path}.${index}.image:desktop` ? 'Uploading…' : method.image ? 'Replace payment photo' : 'Upload payment photo'}</span></label>
+          </div>
+          {method.image && <div className="admin-payment-image-preview"><img src={method.image} alt="Payment method preview" /><button type="button" onClick={() => updateMethod(index, 'image', '')}>Remove photo</button></div>}
+          {!method.image?.trim() && !method.information?.trim() && <p className="admin-form-error">Add a photo or payment information before publishing.</p>}
+        </article>)}
+        <button className="admin-add-review" type="button" onClick={() => setContent((current) => writeContentPath(current, path, [...(readContentPath(current, path) || []), { id: `payment-${Date.now()}`, name: '', kicker: '', title: '', information: '', image: '', confirmLabel: 'Continue' }]))}><Plus /> Add payment method</button>
+        <small>{methods.length} added · Minimum 1</small>
+      </div>;
+    }
     if (path === 'cta.socialLinks') {
       const links = readContentPath(content, path) || [];
       const updateLink = (index, key, value) => setContent((current) => {

@@ -1,5 +1,5 @@
 import { createApp } from './app.js';
-import { checkDatabaseConnection, closeDatabase, ensureReviewSchema } from './config/database.js';
+import { checkDatabaseConnection, closeDatabase, ensurePaymentSchema, ensureReviewSchema } from './config/database.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 
@@ -8,8 +8,8 @@ const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, environment: env.NODE_ENV }, 'API server started');
 
   checkDatabaseConnection()
-    .then(() => ensureReviewSchema())
-    .then(() => logger.info('Database connection established and review inbox ready'))
+    .then(() => Promise.all([ensureReviewSchema(), ensurePaymentSchema()]))
+    .then(() => logger.info('Database connection established and storefront schemas ready'))
     .catch((error) => logger.warn({ err: error }, 'Database is not available'));
 });
 

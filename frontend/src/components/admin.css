@@ -1155,6 +1155,22 @@
 .admin-review-empty svg { width: 28px; }
 .admin-review-empty strong { color: #430411; font: 500 22px 'Cormorant Garamond', serif; }
 .admin-review-empty span { max-width: 520px; font: 11px/1.55 Montserrat, sans-serif; }
+.admin-payment-method-editor { display: grid; gap: 14px; }
+.admin-payment-method-editor > article { padding: 18px; border: 1px solid #d7c8bf; display: grid; gap: 15px; background: #fffdf8; }
+.admin-payment-method-editor > article > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.admin-payment-method-editor > article > header > div { display: grid; gap: 3px; }
+.admin-payment-method-editor > article > header strong { color: #430411; font: 600 17px 'Cormorant Garamond', serif; }
+.admin-payment-method-editor > article > header small { color: #8e6e70; font: 10px Montserrat, sans-serif; }
+.admin-payment-method-editor > article > header button,.admin-payment-image-preview button { min-height: 34px; padding: 0 12px; border: 1px solid #b99d96; display: inline-flex; align-items: center; gap: 7px; background: transparent; color: #7c1428; cursor: pointer; font: 700 9px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-payment-method-editor > article > header button:disabled { cursor: not-allowed; opacity: .4; }
+.admin-payment-method-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.admin-payment-method-fields label { display: grid; gap: 7px; color: #4b0713; font: 600 10px Montserrat, sans-serif; }
+.admin-payment-method-fields label.wide { grid-column: 1 / -1; }
+.admin-payment-method-fields input,.admin-payment-method-fields textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #d7c8bf; background: #fffdf8; color: #4b0713; font: 15px 'Cormorant Garamond', serif; }
+.admin-payment-image-preview { display: flex; align-items: flex-end; gap: 12px; }
+.admin-payment-image-preview img { width: 180px; height: 180px; border: 1px solid #d7c8bf; object-fit: contain; background: white; }
+.admin-payment-method-editor > small { color: #8e6e70; font: 10px Montserrat, sans-serif; }
+@media (max-width: 720px) { .admin-payment-method-fields { grid-template-columns: 1fr; } .admin-payment-method-fields label.wide { grid-column: auto; } }
 .admin-topbar-simple { justify-content: flex-start; gap: 18px; }
 .admin-topbar-simple > div { display: grid; gap: 2px; }
 .admin-topbar-simple p { margin: 0; color: #9b7278; font: 700 8px Montserrat, sans-serif; letter-spacing: .16em; text-transform: uppercase; }

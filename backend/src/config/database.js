@@ -56,6 +56,26 @@ export function ensureReviewSchema() {
   return reviewSchemaPromise;
 }
 
+let paymentSchemaPromise;
+
+export function ensurePaymentSchema() {
+  if (!paymentSchemaPromise) {
+    paymentSchemaPromise = (async () => {
+      const [columns] = await pool.query(`
+        SELECT DATA_TYPE AS dataType
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'payment_method'
+        LIMIT 1
+      `);
+      if (columns[0]?.dataType === 'enum') await pool.query('ALTER TABLE orders MODIFY payment_method VARCHAR(120) NOT NULL');
+    })().catch((error) => {
+      paymentSchemaPromise = undefined;
+      throw error;
+    });
+  }
+  return paymentSchemaPromise;
+}
+
 export async function closeDatabase() {
   await pool.end();
 }

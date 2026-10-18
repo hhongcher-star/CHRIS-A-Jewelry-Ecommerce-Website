@@ -179,7 +179,7 @@ CREATE TABLE orders (
     'completed',
     'cancelled'
   ) NOT NULL DEFAULT 'pending_payment',
-  payment_method ENUM('bank_transfer', 'tng_qr') NOT NULL,
+  payment_method VARCHAR(120) NOT NULL,
   currency CHAR(3) NOT NULL DEFAULT 'MYR',
   subtotal DECIMAL(12,2) NOT NULL,
   discount_total DECIMAL(12,2) NOT NULL DEFAULT 0,
