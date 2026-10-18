@@ -517,7 +517,7 @@ const defaultFooterCare = {
 };
 
 function SiteFooter() {
-  const footerContent = useSiteContent('footer', { brandText: 'Timeless pieces for modern romantics. Designed to celebrate every chapter.', socialLabel: 'Follow our journey', shopTitle: 'Shop', careTitle: 'Customer care', newsletterTitle: 'Join our journey', newsletterText: 'Be the first to know about new arrivals, exclusive offers and more.', copyright: '© 2026 CHRISÉA Jewelry. All rights reserved.', legalText: 'Privacy Policy | Terms & Conditions', care: defaultFooterCare });
+  const footerContent = useSiteContent('footer', { brandText: 'Timeless pieces for modern romantics. Designed to celebrate every chapter.', socialLabel: 'Follow our journey', shopTitle: 'Shop', careTitle: 'Customer care', copyright: '© 2026 CHRISÉA Jewelry. All rights reserved.', legalText: 'Privacy Policy | Terms & Conditions', care: defaultFooterCare });
   const [carePanel, setCarePanel] = useState(null);
   const legacyCareContent = {
     faq: {
@@ -578,7 +578,6 @@ function SiteFooter() {
         <div className="footer-brand"><img className="footer-logo" src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry logo" /><p>{footerContent.brandText}</p><a href="/#top"><span aria-hidden="true">◎</span> {footerContent.socialLabel}</a></div>
         <div><h3>{footerContent.shopTitle}</h3><a href="/shop">All products</a><a href="/shop?category=Necklaces">Necklaces</a><a href="/shop?category=Earrings">Earrings</a><a href="/shop?category=Rings">Rings</a><a href="/shop?category=Bracelets">Bracelets</a></div>
         <div className="footer-care"><h3>{footerContent.careTitle}</h3><button type="button" onClick={() => setCarePanel('faq')}>FAQ</button><button type="button" onClick={() => setCarePanel('shipping')}>Shipping & delivery</button><button type="button" onClick={() => setCarePanel('returns')}>Return & refund</button></div>
-        <div className="newsletter"><h3>{footerContent.newsletterTitle}</h3><p>{footerContent.newsletterText}</p><form onSubmit={(e) => e.preventDefault()}><label className="sr-only" htmlFor="email">Email address</label><input id="email" type="email" placeholder="Your email address" /><button aria-label="Subscribe"><ArrowRight /></button></form></div>
       </div>
       <div className="footer-bottom"><span>{footerContent.copyright}</span><span>{footerContent.legalText}</span></div>
       {activeCare && (
@@ -984,13 +983,38 @@ function ReviewsPage() {
   const [rating, setRating] = useState('All');
   const [submittedReviews, setSubmittedReviews] = useState([]);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
-  const [reviewForm, setReviewForm] = useState({ customerName: '', customerEmail: '', rating: 5, title: '', content: '', website: '' });
+  const [reviewForm, setReviewForm] = useState({ customerName: '', rating: 5, title: '', content: '', website: '' });
   const [reviewStartedAt, setReviewStartedAt] = useState(Date.now());
   const [reviewStatus, setReviewStatus] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Email', value: 'hello@chrisea.com' }] } });
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
   useEffect(() => { fetch(`${API_URL}/reviews`, { cache: 'no-store' }).then((response) => response.ok ? response.json() : Promise.reject()).then((result) => setSubmittedReviews(result.data?.reviews || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    if (!reviewFormOpen) return undefined;
+    const scrollPosition = window.scrollY;
+    const previous = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow
+    };
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollPosition}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event) => { if (event.key === 'Escape') setReviewFormOpen(false); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      Object.assign(document.body.style, previous);
+      window.scrollTo({ top: scrollPosition, left: 0, behavior: 'auto' });
+    };
+  }, [reviewFormOpen]);
   const reviews = [...submittedReviews, ...(Array.isArray(reviewsContent.feed.items) ? reviewsContent.feed.items : [])].filter((review) =>
     review?.author?.trim() && review?.title?.trim() && review?.copy?.trim()
   );
@@ -1008,7 +1032,7 @@ function ReviewsPage() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error?.message || 'The review could not be submitted.');
       setReviewStatus('Thank you. Your review was sent for approval.');
-      setReviewForm({ customerName: '', customerEmail: '', rating: 5, title: '', content: '', website: '' });
+      setReviewForm({ customerName: '', rating: 5, title: '', content: '', website: '' });
     } catch (error) { setReviewStatus(error.message); }
     finally { setReviewSubmitting(false); }
   };
@@ -1040,7 +1064,7 @@ function ReviewsPage() {
         </section>
       </main>
       <SiteFooter />
-      {reviewFormOpen && <div className="customer-review-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setReviewFormOpen(false)}><form className="customer-review-form" onSubmit={submitCustomerReview}><button className="customer-review-close" type="button" onClick={() => setReviewFormOpen(false)} aria-label="Close review form"><X /></button><p>Share your experience</p><h2>Write a review</h2><span>Your review is sent privately for approval before appearing on the website.</span><div className="customer-review-fields"><label>Your name<input value={reviewForm.customerName} onChange={(event) => setReviewForm((current) => ({ ...current, customerName: event.target.value }))} minLength="2" maxLength="120" required /></label><label>Email address<input type="email" value={reviewForm.customerEmail} onChange={(event) => setReviewForm((current) => ({ ...current, customerEmail: event.target.value }))} maxLength="255" required /></label><label>Rating<select value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))}>{[5,4,3,2,1].map((value) => <option value={value} key={value}>{value} stars</option>)}</select></label><label className="wide">Review title<input value={reviewForm.title} onChange={(event) => setReviewForm((current) => ({ ...current, title: event.target.value }))} minLength="3" maxLength="150" required /></label><label className="wide">Your review<textarea rows="6" value={reviewForm.content} onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))} minLength="20" maxLength="2000" required /></label><label className="review-honeypot" aria-hidden="true">Website<input tabIndex="-1" autoComplete="off" value={reviewForm.website} onChange={(event) => setReviewForm((current) => ({ ...current, website: event.target.value }))} /></label></div>{reviewStatus && <p className="customer-review-status">{reviewStatus}</p>}<button className="customer-review-submit" type="submit" disabled={reviewSubmitting}>{reviewSubmitting ? 'Sending…' : 'Send review for approval'}</button></form></div>}
+      {reviewFormOpen && <div className="customer-review-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setReviewFormOpen(false)}><form className="customer-review-form" onSubmit={submitCustomerReview}><button className="customer-review-close" type="button" onClick={() => setReviewFormOpen(false)} aria-label="Close review form"><X /></button><p>Share your experience</p><h2>Write a review</h2><span>Your review is sent privately for approval before appearing on the website.</span><div className="customer-review-fields"><label>Your name<input value={reviewForm.customerName} onChange={(event) => setReviewForm((current) => ({ ...current, customerName: event.target.value }))} minLength="2" maxLength="120" required /></label><label>Rating<select value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))}>{[5,4,3,2,1].map((value) => <option value={value} key={value}>{value} stars</option>)}</select></label><label className="wide">Review title<input value={reviewForm.title} onChange={(event) => setReviewForm((current) => ({ ...current, title: event.target.value }))} minLength="3" maxLength="150" required /></label><label className="wide">Your review<textarea rows="6" value={reviewForm.content} onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))} maxLength="2000" required /></label><label className="review-honeypot" aria-hidden="true">Website<input tabIndex="-1" autoComplete="off" value={reviewForm.website} onChange={(event) => setReviewForm((current) => ({ ...current, website: event.target.value }))} /></label></div>{reviewStatus && <p className="customer-review-status">{reviewStatus}</p>}<button className="customer-review-submit" type="submit" disabled={reviewSubmitting}>{reviewSubmitting ? 'Sending…' : 'Send review for approval'}</button></form></div>}
     </div>
   );
 }

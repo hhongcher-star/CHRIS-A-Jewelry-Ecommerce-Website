@@ -6,10 +6,9 @@ import { AppError } from '../errors/app-error.js';
 
 const reviewSchema = z.object({
   customerName: z.string().trim().min(2).max(120),
-  customerEmail: z.string().trim().email().max(255),
   rating: z.coerce.number().int().min(1).max(5),
   title: z.string().trim().min(3).max(150),
-  content: z.string().trim().min(20).max(2000),
+  content: z.string().trim().min(1).max(2000),
   website: z.string().max(0).optional().default(''),
   startedAt: z.coerce.number().int().positive()
 });
@@ -26,9 +25,9 @@ export async function submitReview(req, res) {
   const links = review.content.match(/https?:\/\/|www\.|<a\b/gi) || [];
   if (links.length > 1) throw new AppError(400, 'REVIEW_LINK_LIMIT', 'Reviews cannot contain multiple links.');
   const ipHash = digest(req.ip || req.socket.remoteAddress || 'unknown');
-  const submissionHash = digest([review.customerEmail.toLowerCase(), review.title.toLowerCase(), review.content.toLowerCase()].join('|'));
+  const submissionHash = digest([ipHash, review.title.toLowerCase(), review.content.toLowerCase()].join('|'));
   try {
-    await pool.query('INSERT INTO review_submissions (customer_name, customer_email, rating, title, content, ip_hash, submission_hash) VALUES (?, ?, ?, ?, ?, ?, ?)', [review.customerName, review.customerEmail.toLowerCase(), review.rating, review.title, review.content, ipHash, submissionHash]);
+    await pool.query('INSERT INTO review_submissions (customer_name, customer_email, rating, title, content, ip_hash, submission_hash) VALUES (?, ?, ?, ?, ?, ?, ?)', [review.customerName, '', review.rating, review.title, review.content, ipHash, submissionHash]);
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') throw new AppError(409, 'DUPLICATE_REVIEW', 'This review has already been submitted.');
     throw error;

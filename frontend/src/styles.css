@@ -276,18 +276,14 @@ img { display: block; width: 100%; }
 .promise-grid p { font: 14px/1.6 'Cormorant Garamond', serif; color: rgba(248,243,233,.78); margin: 0; }
 
 footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; }
-.footer-main { padding-top: 62px; padding-bottom: 58px; display: grid; grid-template-columns: 1.5fr .65fr .85fr 1.25fr; gap: 6%; }
+.footer-main { padding-top: 62px; padding-bottom: 58px; display: grid; grid-template-columns: 1.5fr .65fr .85fr; gap: 8%; }
 .footer-logo { width: 170px; height: 170px; object-fit: contain; }
-.footer-brand p, .newsletter p { font: 14px/1.6 'Cormorant Garamond', serif; color: #f8f3e9; }
+.footer-brand p { font: 14px/1.6 'Cormorant Garamond', serif; color: #f8f3e9; }
 .footer-brand > a { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 9px; text-transform: uppercase; letter-spacing: .13em; }
 .footer-main h3 { margin: 0 0 20px; font: 600 11px 'Cormorant Garamond', serif; letter-spacing: .17em; text-transform: uppercase; }
 .footer-main > div:not(:first-child) > a { display: block; font: 14px/1.85 'Cormorant Garamond', serif; color: #f8f3e9; }
 .footer-care button { display: block; padding: 0; border: 0; background: transparent; color: #f8f3e9; cursor: pointer; font: 14px/1.85 'Cormorant Garamond', serif; transition: color .2s, transform .2s; }
 .footer-care button:hover, .footer-care a:hover { color: #f8f3e9; transform: translateX(3px); }
-.newsletter form { margin-top: 22px; display: grid; grid-template-columns: 1fr 45px; height: 47px; background: var(--ivory); }
-.newsletter input { min-width: 0; padding: 0 16px; border: 0; outline: 0; background: transparent; color: var(--ink); font: 13px 'Cormorant Garamond', serif; }
-.newsletter button { border: 0; border-left: 1px solid #f8f3e9; background: transparent; color: var(--burgundy); cursor: pointer; }
-.newsletter button svg { width: 16px; }
 .footer-bottom { min-height: 58px; padding: 0 5%; border-top: 1px solid rgba(248,243,233,.13); display: flex; justify-content: space-between; align-items: center; font: 10px 'Cormorant Garamond', serif; letter-spacing: .04em; color: #f8f3e9; }
 .care-modal { position: fixed; inset: 0; z-index: 1200; padding: 28px; display: grid; place-items: center; background: rgba(67,4,17,.62); backdrop-filter: blur(8px); animation: careFade .25s ease both; }
 .care-modal-panel { position: relative; width: min(680px, 100%); max-height: min(780px, calc(100vh - 56px)); overflow-y: auto; padding: 54px 58px 45px; border: 1px solid rgba(67,4,17,.24); background: #f8f3e9; box-shadow: 0 30px 80px rgba(67,4,17,.28); color: var(--ink); animation: careRise .35s cubic-bezier(.22,1,.36,1) both; }
