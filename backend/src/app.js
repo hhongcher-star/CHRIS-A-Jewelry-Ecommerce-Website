@@ -16,6 +16,7 @@ import { catalogRouter } from './routes/catalog.routes.js';
 import { orderRouter } from './routes/order.routes.js';
 import { promotionRouter } from './routes/promotion.routes.js';
 import { contentRouter } from './routes/content.routes.js';
+import { reviewRouter } from './routes/review.routes.js';
 
 export function createApp() {
   const app = express();
@@ -64,6 +65,7 @@ export function createApp() {
   app.use('/api/orders', orderRouter);
   app.use('/api/promotions', promotionRouter);
   app.use('/api/content', contentRouter);
+  app.use('/api/reviews', reviewRouter);
   app.use('/api/admin', adminRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);

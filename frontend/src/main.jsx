@@ -116,6 +116,7 @@ const socialIconUrls = {
   WhatsApp: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/whatsapp.svg',
   Facebook: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg'
 };
+const socialIconFor = (label = '') => socialIconUrls[Object.keys(socialIconUrls).find((type) => type.toLowerCase() === label.trim().toLowerCase())] || socialIconUrls.Email;
 
 function useSiteContent(page, fallback) {
   const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
@@ -981,9 +982,16 @@ function ProductPage() {
 
 function ReviewsPage() {
   const [rating, setRating] = useState('All');
+  const [submittedReviews, setSubmittedReviews] = useState([]);
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ customerName: '', customerEmail: '', rating: 5, title: '', content: '', website: '' });
+  const [reviewStartedAt, setReviewStartedAt] = useState(Date.now());
+  const [reviewStatus, setReviewStatus] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Email', value: 'hello@chrisea.com' }] } });
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
-  const reviews = (Array.isArray(reviewsContent.feed.items) ? reviewsContent.feed.items : []).filter((review) =>
+  useEffect(() => { fetch(`${API_URL}/reviews`, { cache: 'no-store' }).then((response) => response.ok ? response.json() : Promise.reject()).then((result) => setSubmittedReviews(result.data?.reviews || [])).catch(() => {}); }, []);
+  const reviews = [...submittedReviews, ...(Array.isArray(reviewsContent.feed.items) ? reviewsContent.feed.items : [])].filter((review) =>
     review?.author?.trim() && review?.title?.trim() && review?.copy?.trim()
   );
   const visibleReviews = reviews.filter((review) => {
@@ -991,6 +999,19 @@ function ReviewsPage() {
     if (rating === 'With Photos') return Boolean(review.image);
     return Number(review.rating || 5) === Number(rating[0]);
   });
+  const openReviewForm = () => { setReviewStartedAt(Date.now()); setReviewStatus(''); setReviewFormOpen(true); };
+  const submitCustomerReview = async (event) => {
+    event.preventDefault();
+    setReviewSubmitting(true); setReviewStatus('');
+    try {
+      const response = await fetch(`${API_URL}/reviews`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...reviewForm, startedAt: reviewStartedAt }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error?.message || 'The review could not be submitted.');
+      setReviewStatus('Thank you. Your review was sent for approval.');
+      setReviewForm({ customerName: '', customerEmail: '', rating: 5, title: '', content: '', website: '' });
+    } catch (error) { setReviewStatus(error.message); }
+    finally { setReviewSubmitting(false); }
+  };
   return (
     <div className="page-shell reviews-page">
       <Header />
@@ -1015,10 +1036,11 @@ function ReviewsPage() {
 
         <section className="reviews-cta">
           <div className="reviews-cta-image"><ResponsiveContentImage content={reviewsContent} path="cta.image" src={reviewsContent.cta.image} alt="CHRISÉA jewellery styled by our community" /></div>
-          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a className="reviews-cta-button" href={reviewsContent.cta.buttonHref}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a><div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => { const destination = socialHref(link); return destination ? <a href={destination} target={destination.startsWith('http') ? '_blank' : undefined} rel={destination.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><img src={socialIconUrls[link.label] || socialIconUrls.Email} alt="" /><small>{link.label}</small><strong>{link.value}</strong></a> : null; })}</div></div>
+          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><button className="reviews-cta-button" type="button" onClick={openReviewForm}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></button><div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => { const destination = socialHref(link); return destination ? <a href={destination} target={destination.startsWith('http') ? '_blank' : undefined} rel={destination.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><img src={socialIconFor(link.label)} alt="" /><small>{link.label}</small><strong>{link.value}</strong></a> : null; })}</div></div>
         </section>
       </main>
       <SiteFooter />
+      {reviewFormOpen && <div className="customer-review-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setReviewFormOpen(false)}><form className="customer-review-form" onSubmit={submitCustomerReview}><button className="customer-review-close" type="button" onClick={() => setReviewFormOpen(false)} aria-label="Close review form"><X /></button><p>Share your experience</p><h2>Write a review</h2><span>Your review is sent privately for approval before appearing on the website.</span><div className="customer-review-fields"><label>Your name<input value={reviewForm.customerName} onChange={(event) => setReviewForm((current) => ({ ...current, customerName: event.target.value }))} minLength="2" maxLength="120" required /></label><label>Email address<input type="email" value={reviewForm.customerEmail} onChange={(event) => setReviewForm((current) => ({ ...current, customerEmail: event.target.value }))} maxLength="255" required /></label><label>Rating<select value={reviewForm.rating} onChange={(event) => setReviewForm((current) => ({ ...current, rating: Number(event.target.value) }))}>{[5,4,3,2,1].map((value) => <option value={value} key={value}>{value} stars</option>)}</select></label><label className="wide">Review title<input value={reviewForm.title} onChange={(event) => setReviewForm((current) => ({ ...current, title: event.target.value }))} minLength="3" maxLength="150" required /></label><label className="wide">Your review<textarea rows="6" value={reviewForm.content} onChange={(event) => setReviewForm((current) => ({ ...current, content: event.target.value }))} minLength="20" maxLength="2000" required /></label><label className="review-honeypot" aria-hidden="true">Website<input tabIndex="-1" autoComplete="off" value={reviewForm.website} onChange={(event) => setReviewForm((current) => ({ ...current, website: event.target.value }))} /></label></div>{reviewStatus && <p className="customer-review-status">{reviewStatus}</p>}<button className="customer-review-submit" type="submit" disabled={reviewSubmitting}>{reviewSubmitting ? 'Sending…' : 'Send review for approval'}</button></form></div>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { adjustProductStock, createCategory, createProduct, createPromotion, das
 import { authenticate, requireRole } from '../middleware/authenticate.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { adminContent, publishContent, saveContentDraft } from '../controllers/content.controller.js';
+import { adminReviews, deleteReview, moderateReview } from '../controllers/review.controller.js';
 
 export const adminRouter = Router();
 
@@ -26,6 +27,9 @@ adminRouter.patch('/products/:id/restore', asyncHandler(restoreProduct));
 adminRouter.delete('/products/:id/permanent', asyncHandler(permanentlyDeleteProduct));
 adminRouter.post('/product-images', asyncHandler(uploadProductImage));
 adminRouter.post('/content-images', asyncHandler(uploadProductImage));
+adminRouter.get('/reviews', asyncHandler(adminReviews));
+adminRouter.patch('/reviews/:id', asyncHandler(moderateReview));
+adminRouter.delete('/reviews/:id', asyncHandler(deleteReview));
 adminRouter.get('/orders', asyncHandler(listOrders));
 adminRouter.get('/orders-trash', asyncHandler(listDeletedOrders));
 adminRouter.get('/orders/:id', asyncHandler(getOrder));

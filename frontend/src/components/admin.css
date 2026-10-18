@@ -1155,6 +1155,41 @@
 .admin-review-empty svg { width: 28px; }
 .admin-review-empty strong { color: #430411; font: 500 22px 'Cormorant Garamond', serif; }
 .admin-review-empty span { max-width: 520px; font: 11px/1.55 Montserrat, sans-serif; }
+.admin-topbar-simple { justify-content: flex-start; gap: 18px; }
+.admin-topbar-simple > div { display: grid; gap: 2px; }
+.admin-topbar-simple p { margin: 0; color: #9b7278; font: 700 8px Montserrat, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.admin-topbar-simple strong { color: #430411; font: 600 18px 'Cormorant Garamond', serif; }
+.admin-topbar-simple > a { min-height: 36px; margin-left: auto; padding: 0 13px; border: 1px solid #c8aaa4; display: inline-flex; align-items: center; gap: 7px; color: #6d1325; font: 700 9px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-topbar-simple > a svg { width: 14px; }
+.admin-reviews-page { display: grid; gap: 22px; }
+.admin-page-heading h1 { margin: 4px 0 7px; color: #430411; font: 500 40px/1 'Cormorant Garamond', serif; }
+.admin-page-heading p { margin: 0; color: #8c5360; font: 700 9px Montserrat, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+.admin-page-heading span { color: #86676a; font: 12px/1.5 Montserrat, sans-serif; }
+.admin-review-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-review-filters button { min-height: 38px; padding: 0 14px; border: 1px solid #d7c8bf; display: inline-flex; align-items: center; gap: 8px; background: #fffdf8; color: #6d1325; cursor: pointer; font: 700 9px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-review-filters button.active { border-color: #6d1325; background: #6d1325; color: #fffaf0; }
+.admin-review-filters span { min-width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(109,19,37,.1); }
+.admin-review-filters button.active span { background: rgba(255,255,255,.16); }
+.admin-review-inbox { display: grid; gap: 14px; }
+.admin-review-inbox > article { padding: 22px; border: 1px solid #d7c8bf; display: grid; gap: 13px; background: #fffdf8; }
+.admin-review-inbox article > header,.admin-review-inbox article > footer { display: flex; justify-content: space-between; gap: 18px; align-items: center; }
+.admin-review-inbox article > header > div { display: flex; align-items: center; gap: 11px; }
+.admin-review-inbox time { color: #9b7c7e; font: 10px Montserrat, sans-serif; }
+.admin-review-inbox header > strong { color: #8a1830; letter-spacing: .08em; }
+.admin-review-inbox h2 { margin: 0; color: #430411; font: 600 25px 'Cormorant Garamond', serif; }
+.admin-review-inbox article > p { margin: 0; color: #654c50; font: 14px/1.65 Montserrat, sans-serif; white-space: pre-wrap; }
+.admin-review-inbox article > footer { padding-top: 15px; border-top: 1px solid #eaded7; }
+.admin-review-inbox footer > div { display: grid; gap: 3px; }
+.admin-review-inbox footer a { color: #9a6970; font: 10px Montserrat, sans-serif; }
+.admin-review-inbox footer aside { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-review-inbox footer button { min-height: 35px; padding: 0 12px; border: 1px solid #6d1325; background: #6d1325; color: white; cursor: pointer; font: 700 8px Montserrat, sans-serif; text-transform: uppercase; }
+.admin-review-inbox footer button.danger { border-color: #b98f91; display: inline-flex; align-items: center; gap: 6px; background: transparent; color: #8d1730; }
+.admin-review-inbox footer button svg { width: 13px; }
+.admin-review-inbox-empty { min-height: 230px; border: 1px dashed #ccb9b0; display: grid; place-items: center; align-content: center; gap: 7px; color: #94777a; text-align: center; }
+.admin-review-inbox-empty h2,.admin-review-inbox-empty p { margin: 0; }
+.admin-review-inbox-empty h2 { color: #430411; font: 500 26px 'Cormorant Garamond', serif; }
+.admin-review-inbox-empty p { font: 11px Montserrat, sans-serif; }
+@media (max-width: 720px) { .admin-topbar-simple > a { display: none; } .admin-review-inbox article > header,.admin-review-inbox article > footer { align-items: flex-start; flex-direction: column; } }
 .admin-add-review { min-height: 45px; border: 1px solid #6d1325; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #6d1325; color: #fffaf1; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 .admin-add-review svg { width: 16px; }
 .admin-social-editor { display: grid; gap: 13px; }
