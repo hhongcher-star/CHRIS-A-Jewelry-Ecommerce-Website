@@ -26,7 +26,6 @@ const AdminApp = React.lazy(() => import('./components/AdminApp'));
 const A = '/assets/products';
 const ABOUT_CONTENT_ENDPOINT = import.meta.env.VITE_ABOUT_CONTENT_ENDPOINT || '/content/about.json';
 const SHOP_PROMOTIONS_ENDPOINT = import.meta.env.VITE_SHOP_PROMOTIONS_ENDPOINT || '/content/shop-promotions.json';
-const CONTACT_CONTENT_ENDPOINT = import.meta.env.VITE_CONTACT_CONTENT_ENDPOINT || '/content/contact.json';
 const DEPLOYMENT_SITE_URL = 'https://mediumvioletred-stingray-627422.hostingersite.com';
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${DEPLOYMENT_SITE_URL}/api` : 'http://localhost:5000/api');
 const ADMIN_ENTRY_PATH = `/${String(import.meta.env.VITE_ADMIN_PATH || 'atelier-9q7m2x4k8v6p').replace(/^\/+|\/+$/g, '')}`;
@@ -490,14 +489,12 @@ function Header() {
 const defaultFooterCare = {
   faq: { eyebrow: 'Customer care', title: 'Frequently Asked Questions', intro: 'A few helpful answers about ordering from CHRISÉA.', sections: [['Can I change my order?', 'Please contact us as soon as possible. We will gladly help before your order has been prepared for dispatch.'], ['How should I care for my jewellery?', 'Keep each piece dry, avoid perfume and lotions, and store it separately in its pouch after wearing.'], ['Is gift packaging available?', 'Every CHRISÉA order is thoughtfully presented and ready for gifting.']] },
   shipping: { eyebrow: 'Delivery information', title: 'Shipping & Delivery', intro: 'Your jewellery is carefully prepared and packed before beginning its journey to you.', sections: [['Malaysia delivery', 'Orders are usually prepared within 1–2 business days. Delivery typically takes 2–5 business days after dispatch.'], ['Shipping updates', 'Once your parcel is on the way, delivery details will be sent to the email address used at checkout.'], ['Packaging', 'Each order is protected in signature CHRISÉA packaging suitable for keeping or gifting.']] },
-  returns: { eyebrow: 'Customer care', title: 'Return & Refund', intro: 'We want every CHRISÉA piece to feel just right when it arrives.', sections: [['Return window', 'Eligible unworn items may be requested for return within 14 days of delivery, with original packaging included.'], ['Making a request', 'Contact our customer care team with your order details and reason for return before sending an item back.'], ['Refunds', 'Approved refunds are returned to the original payment method after the item has been received and inspected.']] },
-  contact: { eyebrow: 'We are here to help', title: 'Contact CHRISÉA', intro: 'Questions about a piece, an order or a gift? Our customer care team would be delighted to help.', sections: [['Email', 'hello@chrisea.com'], ['WhatsApp concierge', 'Available Monday to Saturday, 10:00 AM–6:00 PM MYT.'], ['Our boutique', 'CHRISÉA is an online jewellery house based in Malaysia.']] }
+  returns: { eyebrow: 'Customer care', title: 'Return & Refund', intro: 'We want every CHRISÉA piece to feel just right when it arrives.', sections: [['Return window', 'Eligible unworn items may be requested for return within 14 days of delivery, with original packaging included.'], ['Making a request', 'Contact our customer care team with your order details and reason for return before sending an item back.'], ['Refunds', 'Approved refunds are returned to the original payment method after the item has been received and inspected.']] }
 };
 
 function SiteFooter() {
   const footerContent = useSiteContent('footer', { brandText: 'Timeless pieces for modern romantics. Designed to celebrate every chapter.', socialLabel: 'Follow our journey', shopTitle: 'Shop', careTitle: 'Customer care', newsletterTitle: 'Join our journey', newsletterText: 'Be the first to know about new arrivals, exclusive offers and more.', copyright: '© 2026 CHRISÉA Jewelry. All rights reserved.', legalText: 'Privacy Policy | Terms & Conditions', care: defaultFooterCare });
   const [carePanel, setCarePanel] = useState(null);
-  const [contactContent, setContactContent] = useState({ eyebrow: 'We are here to help', title: 'Contact CHRISÉA', intro: 'Questions about a piece, an order or a gift? Our customer care team would be delighted to help.', sections: [['Email', 'hello@chrisea.com'], ['WhatsApp concierge', 'Available Monday to Saturday, 10:00 AM–6:00 PM MYT.'], ['Our boutique', 'CHRISÉA is an online jewellery house based in Malaysia.']] });
   const legacyCareContent = {
     faq: {
       eyebrow: 'Customer care',
@@ -529,14 +526,7 @@ function SiteFooter() {
         ['Refunds', 'Approved refunds are returned to the original payment method after the item has been received and inspected.'],
       ],
     },
-    contact: contactContent,
   };
-
-  useEffect(() => {
-    let active = true;
-    fetch(CONTACT_CONTENT_ENDPOINT).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => active && setContactContent(data)).catch(() => {});
-    return () => { active = false; };
-  }, []);
 
   useEffect(() => {
     if (!carePanel) return undefined;
@@ -548,7 +538,7 @@ function SiteFooter() {
     if (!new URLSearchParams(window.location.search).has('cmsPreview')) return undefined;
     const openCarePreview = (event) => {
       if (event.origin !== window.location.origin || event.data?.type !== 'chrisea-cms-section' || event.data?.page !== 'footer') return;
-      if (['faq', 'shipping', 'returns', 'contact'].includes(event.data.section)) setCarePanel(event.data.section);
+      if (['faq', 'shipping', 'returns'].includes(event.data.section)) setCarePanel(event.data.section);
       else setCarePanel(null);
     };
     window.addEventListener('message', openCarePreview);
@@ -563,7 +553,7 @@ function SiteFooter() {
       <div className="footer-main section-pad">
         <div className="footer-brand"><img className="footer-logo" src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry logo" /><p>{footerContent.brandText}</p><a href="/#top"><span aria-hidden="true">◎</span> {footerContent.socialLabel}</a></div>
         <div><h3>{footerContent.shopTitle}</h3><a href="/shop">All products</a><a href="/shop?category=Necklaces">Necklaces</a><a href="/shop?category=Earrings">Earrings</a><a href="/shop?category=Rings">Rings</a><a href="/shop?category=Bracelets">Bracelets</a></div>
-        <div className="footer-care"><h3>{footerContent.careTitle}</h3><button type="button" onClick={() => setCarePanel('faq')}>FAQ</button><button type="button" onClick={() => setCarePanel('shipping')}>Shipping & delivery</button><button type="button" onClick={() => setCarePanel('returns')}>Return & refund</button><button type="button" onClick={() => setCarePanel('contact')}>Contact us</button></div>
+        <div className="footer-care"><h3>{footerContent.careTitle}</h3><button type="button" onClick={() => setCarePanel('faq')}>FAQ</button><button type="button" onClick={() => setCarePanel('shipping')}>Shipping & delivery</button><button type="button" onClick={() => setCarePanel('returns')}>Return & refund</button></div>
         <div className="newsletter"><h3>{footerContent.newsletterTitle}</h3><p>{footerContent.newsletterText}</p><form onSubmit={(e) => e.preventDefault()}><label className="sr-only" htmlFor="email">Email address</label><input id="email" type="email" placeholder="Your email address" /><button aria-label="Subscribe"><ArrowRight /></button></form></div>
       </div>
       <div className="footer-bottom"><span>{footerContent.copyright}</span><span>{footerContent.legalText}</span></div>
@@ -1530,7 +1520,7 @@ function SiteRouter() {
       about: { hero: '.about-hero', story: '.about-origin', values: '.about-values', general: '.about-quote', cta: '.about-cta' },
       reviews: { hero: '.reviews-hero', feed: '.reviews-feed', social: '.reviews-social', cta: '.reviews-cta' },
       announcement: { general: '.announcement' },
-      footer: { general: '#contact', faq: '.care-modal-panel', shipping: '.care-modal-panel', returns: '.care-modal-panel', contact: '.care-modal-panel' }
+      footer: { general: '#contact', faq: '.care-modal-panel', shipping: '.care-modal-panel', returns: '.care-modal-panel' }
     };
     const receive = (event) => {
       if (event.origin !== window.location.origin || event.data?.type !== 'chrisea-cms-section') return;

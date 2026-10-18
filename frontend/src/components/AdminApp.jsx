@@ -737,10 +737,9 @@ contentPages.home.fields.push(
 contentPages.footer.defaults.care = {
   faq: { eyebrow: 'Customer care', title: 'Frequently Asked Questions', intro: 'A few helpful answers about ordering from CHRISÉA.', sections: [['Can I change my order?', 'Please contact us as soon as possible. We will gladly help before your order has been prepared for dispatch.'], ['How should I care for my jewellery?', 'Keep each piece dry, avoid perfume and lotions, and store it separately in its pouch after wearing.'], ['Is gift packaging available?', 'Every CHRISÉA order is thoughtfully presented and ready for gifting.']] },
   shipping: { eyebrow: 'Delivery information', title: 'Shipping & Delivery', intro: 'Your jewellery is carefully prepared and packed before beginning its journey to you.', sections: [['Malaysia delivery', 'Orders are usually prepared within 1–2 business days. Delivery typically takes 2–5 business days after dispatch.'], ['Shipping updates', 'Once your parcel is on the way, delivery details will be sent to the email address used at checkout.'], ['Packaging', 'Each order is protected in signature CHRISÉA packaging suitable for keeping or gifting.']] },
-  returns: { eyebrow: 'Customer care', title: 'Return & Refund', intro: 'We want every CHRISÉA piece to feel just right when it arrives.', sections: [['Return window', 'Eligible unworn items may be requested for return within 14 days of delivery, with original packaging included.'], ['Making a request', 'Contact our customer care team with your order details and reason for return before sending an item back.'], ['Refunds', 'Approved refunds are returned to the original payment method after the item has been received and inspected.']] },
-  contact: { eyebrow: 'We are here to help', title: 'Contact CHRISÉA', intro: 'Questions about a piece, an order or a gift? Our customer care team would be delighted to help.', sections: [['Email', 'hello@chrisea.com'], ['WhatsApp concierge', 'Available Monday to Saturday, 10:00 AM–6:00 PM MYT.'], ['Our boutique', 'CHRISÉA is an online jewellery house based in Malaysia.']] }
+  returns: { eyebrow: 'Customer care', title: 'Return & Refund', intro: 'We want every CHRISÉA piece to feel just right when it arrives.', sections: [['Return window', 'Eligible unworn items may be requested for return within 14 days of delivery, with original packaging included.'], ['Making a request', 'Contact our customer care team with your order details and reason for return before sending an item back.'], ['Refunds', 'Approved refunds are returned to the original payment method after the item has been received and inspected.']] }
 };
-['faq', 'shipping', 'returns', 'contact'].forEach((panel) => contentPages.footer.fields.push(
+['faq', 'shipping', 'returns'].forEach((panel) => contentPages.footer.fields.push(
   [`care.${panel}.eyebrow`, `${panel} small title`], [`care.${panel}.title`, `${panel} title`], [`care.${panel}.intro`, `${panel} introduction`, 'textarea'], [`care.${panel}.sections`, `${panel} entries`, 'products']
 ));
 
@@ -813,9 +812,13 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
       <label><span>Zoom <b>{zoom}%</b></span><input type="range" min="50" max="250" step="5" value={zoom} onChange={(event) => update('zoom', event.target.value)} /></label>
       <label><span>Horizontal <b>{x}%</b></span><input type="range" min="0" max="100" value={x} onChange={(event) => update('x', event.target.value)} /></label>
       <label><span>Vertical <b>{y}%</b></span><input type="range" min="0" max="100" value={y} onChange={(event) => update('y', event.target.value)} /></label>
+      <div className="admin-image-nudge" aria-label="Move image vertically">
+        <button type="button" onClick={() => update('y', Math.min(100, y + 5))}><ChevronUp /> Move image up</button>
+        <button type="button" onClick={() => update('y', Math.max(0, y - 5))}><ChevronDown /> Move image down</button>
+      </div>
       <button type="button" onClick={() => onChange((current) => ({ ...current, _imageAdjustments: { ...(current._imageAdjustments || {}), [path]: { ...(current._imageAdjustments?.[path] || {}), [device]: { zoom: 100, x: 50, y: 50, fit: 'contain' } } } }))}><RotateCcw /> Reset {device}</button>
     </div>
-    <small className="admin-image-help">Both previews are always shown. Use the Desktop/Mobile switch above to choose which framing controls you are editing.</small>
+    <small className="admin-image-help">Adjust desktop and mobile separately. Move the image up or down until the important part is visible, then publish so customers see the new framing.</small>
   </div>;
 }
 

@@ -1155,6 +1155,9 @@
 .admin-image-adjustments input[type="range"] { display: block; width: 100%; padding: 0; accent-color: #6d1325; }
 .admin-image-adjustments button { justify-self: start; border: 0; background: transparent; color: #8e6e70; font: 600 9px Montserrat,sans-serif; cursor: pointer; }
 .admin-image-adjustments button svg { width: 13px; vertical-align: middle; }
+.admin-image-adjustments .admin-image-nudge { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.admin-image-adjustments .admin-image-nudge button { width: 100%; min-height: 36px; padding: 0 10px; border: 1px solid #cdb9ad; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #fffdf8; color: #6d1325; }
+.admin-image-adjustments .admin-image-nudge button:hover { border-color: #6d1325; }
 .admin-content-image-field > label { min-height: 44px; padding: 0 18px; border: 1px solid #6d1325; display: inline-flex; align-items: center; gap: 9px; color: #6d1325; cursor: pointer; }
 .admin-content-image-field > label svg { width: 17px; }
 .admin-content-image-field input { display: none; }
