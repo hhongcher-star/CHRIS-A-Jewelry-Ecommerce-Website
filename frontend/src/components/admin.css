@@ -1130,6 +1130,11 @@
 .admin-order-field > p { margin: 0; padding: 13px 15px; border: 1px solid rgba(67,4,17,.14); background: #f7efe4; color: rgba(67,4,17,.72); font: 12px/1.6 Arial,sans-serif; }
 .admin-order-field > p strong { color: #430411; }
 .admin-review-editor { display: grid; gap: 14px; }
+.admin-review-help { padding: 15px; border: 1px solid rgba(109,19,37,.18); display: grid; grid-template-columns: 24px 1fr; gap: 11px; background: #f7efe4; color: #6d1325; }
+.admin-review-help > svg { width: 21px; }
+.admin-review-help > div { display: grid; gap: 5px; }
+.admin-review-help strong { font: 700 11px Montserrat, sans-serif; }
+.admin-review-help span { color: rgba(67,4,17,.72); font: 11px/1.6 Arial, sans-serif; }
 .admin-review-editor > article { padding: 18px; border: 1px solid #d7c8bf; display: grid; gap: 15px; background: #fffdf8; }
 .admin-review-editor > article > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .admin-review-editor > article > header > div { display: grid; gap: 3px; }
@@ -1167,7 +1172,11 @@
 .admin-social-editor > article > div { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .admin-social-editor > article label { display: grid; gap: 6px; color: #4b0713; font: 600 10px Montserrat, sans-serif; }
 .admin-social-editor > article label.wide { grid-column: 1 / -1; }
-.admin-social-editor input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #d7c8bf; background: #fffdf8; color: #4b0713; font: 15px 'Cormorant Garamond', serif; }
+.admin-social-editor input,.admin-social-editor select { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #d7c8bf; background: #fffdf8; color: #4b0713; font: 15px 'Cormorant Garamond', serif; }
+.admin-social-editor select { height: 43px; }
+.admin-detected-link { grid-column: 1 / -1; min-width: 0; padding: 11px 13px; border: 1px dashed #cdb9ad; display: grid; gap: 4px; background: #f7efe4; }
+.admin-detected-link span { color: #8e6e70; font: 700 8px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.admin-detected-link strong { color: #6d1325; font: 500 14px/1.4 'Cormorant Garamond', serif; overflow-wrap: anywhere; }
 .admin-add-social { min-height: 44px; border: 1px solid #6d1325; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #6d1325; color: #fffaf1; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 .admin-add-social:disabled { cursor: not-allowed; opacity: .45; }
 .admin-add-social svg { width: 15px; }

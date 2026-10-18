@@ -113,6 +113,47 @@ async function api(path, options = {}) {
   return data?.data;
 }
 
+const readBlobAsDataUrl = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('The image could not be read.'));
+  reader.readAsDataURL(blob);
+});
+
+async function optimiseImageForUpload(file, { maxDimension = 2200, quality = 0.82 } = {}) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Only JPG, PNG and WebP images are supported.');
+  if (file.size > 20 * 1024 * 1024) throw new Error('Please choose an image smaller than 20 MB.');
+
+  let source;
+  let objectUrl;
+  try {
+    if ('createImageBitmap' in window) source = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    else {
+      objectUrl = URL.createObjectURL(file);
+      source = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('The image could not be opened.'));
+        image.src = objectUrl;
+      });
+    }
+    const sourceWidth = source.width || source.naturalWidth;
+    const sourceHeight = source.height || source.naturalHeight;
+    const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d', { alpha: true }).drawImage(source, 0, 0, width, height);
+    const blob = await new Promise((resolve, reject) => canvas.toBlob((result) => result ? resolve(result) : reject(new Error('The image could not be prepared.')), 'image/webp', quality));
+    return { dataUrl: await readBlobAsDataUrl(blob), filename: file.name.replace(/\.[^.]+$/, '') + '.webp' };
+  } finally {
+    source?.close?.();
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function AdminLogin({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -399,15 +440,8 @@ function AddProductPage({ initialProduct = null, categories = [], onCancel, onCr
     try {
       const uploaded = [];
       for (const file of selected) {
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Only JPG, PNG and WebP images are supported.');
-        if (file.size > 5 * 1024 * 1024) throw new Error('Each image must be 5 MB or smaller.');
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(new Error('The image could not be read.'));
-          reader.readAsDataURL(file);
-        });
-        const result = await api('/admin/product-images', { method: 'POST', body: JSON.stringify({ filename: file.name, dataUrl }), signal: AbortSignal.timeout(60000) });
+        const prepared = await optimiseImageForUpload(file, { maxDimension: 1800, quality: 0.82 });
+        const result = await api('/admin/product-images', { method: 'POST', body: JSON.stringify(prepared), signal: AbortSignal.timeout(60000) });
         uploaded.push({ name: file.name, url: result.imageUrl });
       }
       setImages((current) => [...current, ...uploaded].slice(0, 10));
@@ -443,7 +477,7 @@ function AddProductPage({ initialProduct = null, categories = [], onCancel, onCr
       {error && <p className="admin-add-error"><AlertTriangle /> {error}</p>}
       <div className="admin-add-layout">
         <div className="admin-add-left">
-          <article className="admin-form-card admin-images-card"><header><div><h2>Product Images</h2><p>Upload up to 10 photographs and choose the storefront cover. Images are stored in Cloudinary as WebP.</p></div><span>{images.length} / 10 images</span></header><div className="admin-image-workspace"><label className={`admin-upload-tile ${uploading ? 'is-uploading' : ''}`}><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={uploadImages} disabled={uploading || images.length >= 10} /><ImagePlus /><strong>{uploading ? 'Uploading…' : 'Upload images'}</strong><span>Click to choose JPG, PNG or WebP files · Max 5 MB each · Converted to WebP</span></label>{images.map((image, index) => <div className="admin-product-preview" key={image.url}><img src={image.url} alt={`Product preview ${index + 1}`} />{index === 0 ? <b>Cover</b> : <button className="admin-set-cover" type="button" onClick={() => setCoverImage(index)}>Set cover</button>}<button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remove ${image.name}`}><X /></button></div>)}{images.length < 2 && <label className="admin-empty-image"><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={uploadImages} disabled={uploading} /><Plus /><span>Add another</span></label>}</div></article>
+          <article className="admin-form-card admin-images-card"><header><div><h2>Product Images</h2><p>Upload up to 10 photographs and choose the storefront cover. Images are stored in Cloudinary as WebP.</p></div><span>{images.length} / 10 images</span></header><div className="admin-image-workspace"><label className={`admin-upload-tile ${uploading ? 'is-uploading' : ''}`}><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={uploadImages} disabled={uploading || images.length >= 10} /><ImagePlus /><strong>{uploading ? 'Optimising & uploading…' : 'Upload images'}</strong><span>JPG, PNG or WebP · Max 20 MB each · Automatically resized and compressed for faster upload</span></label>{images.map((image, index) => <div className="admin-product-preview" key={image.url}><img src={image.url} alt={`Product preview ${index + 1}`} />{index === 0 ? <b>Cover</b> : <button className="admin-set-cover" type="button" onClick={() => setCoverImage(index)}>Set cover</button>}<button type="button" onClick={() => setImages((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remove ${image.name}`}><X /></button></div>)}{images.length < 2 && <label className="admin-empty-image"><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={uploadImages} disabled={uploading} /><Plus /><span>Add another</span></label>}</div></article>
           <article className="admin-form-card admin-basic-card"><header><div><h2>Basic Information</h2></div></header><div className="admin-page-form-grid"><label className="full">Product name <b>*</b><input autoFocus value={form.name} onChange={update('name')} placeholder="e.g. Étoile Pearl Necklace" required minLength="2" /></label><label>Category <b>*</b><select value={form.category} onChange={update('category')} required>{categoryNames.map((item) => <option value={item} key={item}>{item}</option>)}</select></label><label>Status<select value={form.status} onChange={update('status')}><option value="draft">Draft</option><option value="active">Active</option>{isEditing && <option value="archived">Archived</option>}</select></label><label className="full">Description<textarea value={form.description} onChange={update('description')} placeholder="Tell the story behind this piece — materials, inspiration, craftsmanship…" rows="5" /></label><label className="full">Short description<textarea value={form.shortDescription} onChange={update('shortDescription')} placeholder="A brief highlight for product cards and listings." rows="2" maxLength="500" /><small>{form.shortDescription.length} / 500</small></label></div></article>
         </div>
         <div className="admin-add-right">
@@ -720,7 +754,7 @@ const contentPages = {
   },
   reviews: {
     label: 'Reviews',
-    defaults: { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces become part of your story.', image: '/assets/reviews/reviews-hero.jpg' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Instagram', value: '@chrisea.jewelry', href: 'https://instagram.com/chrisea.jewelry' }, { label: 'Email', value: 'hello@chrisea.com', href: 'mailto:hello@chrisea.com' }] } },
+    defaults: { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces become part of your story.', image: '/assets/reviews/reviews-hero.jpg' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Email', value: 'hello@chrisea.com' }] } },
     fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['feed.eyebrow','Reviews small title'],['feed.title','Reviews title'],['feed.items','Customer reviews','reviews'],['cta.eyebrow','Review CTA small title'],['cta.title','Review CTA title'],['cta.description','Review CTA description','textarea'],['cta.buttonLabel','Review CTA button'],['cta.buttonHref','Review button link'],['cta.image','Review CTA image','image'],['cta.socialLinks','Social media & contact links','social-links']]
   },
   announcement: { label: 'Announcement bar', defaults: { messages: ['Complimentary shipping on orders over RM200', 'Gift-ready packaging'] }, fields: [['messages','Announcements','products']] },
@@ -762,6 +796,24 @@ function writeContentPath(source, path, value) {
   target[keys.at(-1)] = value;
   return next;
 }
+
+function detectedSocialHref({ label = '', value = '', href = '' }) {
+  const type = label.trim().toLowerCase();
+  const text = value.trim();
+  if (!text) return '';
+  if (type.includes('mail') || type.includes('gmail')) return `mailto:${text.replace(/^mailto:/i, '')}`;
+  if (type.includes('whatsapp') || type === 'wa') {
+    let digits = text.replace(/\D/g, '');
+    if (digits.startsWith('0')) digits = `60${digits.slice(1)}`;
+    return digits ? `https://wa.me/${digits}` : '';
+  }
+  if (type.includes('phone') || type.includes('telephone') || type.includes('call')) return `tel:${text.replace(/[^+\d]/g, '')}`;
+  if (/^https?:\/\//i.test(text)) return text;
+  if (type.includes('website') || type.includes('web')) return `https://${text.replace(/^\/+/, '')}`;
+  return href.trim();
+}
+
+const socialLinkTypes = ['Instagram', 'Email', 'TikTok', 'WhatsApp', 'Facebook'];
 
 function ContentImageField({ content, path, device, uploading, onUpload, onChange, onSelectDevice }) {
   const desktopImage = readContentPath(content, path);
@@ -950,10 +1002,10 @@ function WebsiteContent({ onStartGuide }) {
     if (!file) return;
     setUploading(`${path}:${device}`);
     try {
-      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+      const prepared = await optimiseImageForUpload(file, { maxDimension: device === 'mobile' ? 1600 : 2400, quality: 0.82 });
       const result = await api('/admin/content-images', {
         method: 'POST',
-        body: JSON.stringify({ filename: file.name, dataUrl }),
+        body: JSON.stringify(prepared),
         signal: AbortSignal.timeout(60000)
       });
       setContent((current) => device === 'mobile'
@@ -978,12 +1030,12 @@ function WebsiteContent({ onStartGuide }) {
         return next;
       });
       return <div className="admin-social-editor">
-        <div className="admin-social-help"><CircleHelp /><div><strong>What is this for?</strong><span>These links appear beside the Write a review button so customers can contact or follow you. Add 1 to 3 items such as WhatsApp, Instagram, TikTok, Facebook, phone or email. For the link, use a full address such as https://wa.me/60123456789, https://instagram.com/yourname, tel:+60123456789 or mailto:hello@example.com.</span></div></div>
+        <div className="admin-social-help"><CircleHelp /><div><strong>What is this for?</strong><span>These links appear beside the Write a review button. Add 1 to 3 items and choose the correct platform so its official icon appears. Email and WhatsApp destinations are detected automatically. For Instagram, TikTok and Facebook, paste the exact profile URL to avoid sending customers to the wrong account.</span></div></div>
         {links.map((link, index) => <article key={link.id || index}>
           <header><strong>Social link {index + 1}</strong><button type="button" disabled={links.length <= 1} onClick={() => setContent((current) => writeContentPath(current, path, readContentPath(current, path).filter((_, itemIndex) => itemIndex !== index)))}><Trash2 /> Delete</button></header>
-          <div><label>Type / name<input value={link.label || ''} onChange={(event) => updateLink(index, 'label', event.target.value)} placeholder="e.g. WhatsApp" /></label><label>Text shown to customers<input value={link.value || ''} onChange={(event) => updateLink(index, 'value', event.target.value)} placeholder="e.g. +60 12-345 6789" /></label><label className="wide">Link<input value={link.href || ''} onChange={(event) => updateLink(index, 'href', event.target.value)} placeholder="e.g. https://wa.me/60123456789" /></label></div>
+          <div><label>Platform / category<select value={link.label || 'Email'} onChange={(event) => updateLink(index, 'label', event.target.value)}>{socialLinkTypes.map((type) => <option value={type} key={type}>{type}</option>)}</select></label><label>Text shown to customers<input value={link.value || ''} onChange={(event) => updateLink(index, 'value', event.target.value)} placeholder={link.label === 'WhatsApp' ? 'e.g. 016-773 8560' : link.label === 'Email' ? 'e.g. hello@example.com' : 'e.g. @youraccount'} /></label>{!['Email','WhatsApp'].includes(link.label) && <label className="wide">Exact profile URL<input value={link.href || ''} onChange={(event) => updateLink(index, 'href', event.target.value)} placeholder={`e.g. https://${String(link.label || 'platform').toLowerCase()}.com/youraccount`} /></label>}<div className="admin-detected-link"><span>Customer will open</span><strong>{detectedSocialHref(link) || 'Complete the fields above'}</strong></div></div>
         </article>)}
-        <button className="admin-add-social" type="button" disabled={links.length >= 3} onClick={() => setContent((current) => writeContentPath(current, path, [...(readContentPath(current, path) || []), { id: `social-${Date.now()}`, label: '', value: '', href: '' }]))}><Plus /> Add social or contact link</button>
+        <button className="admin-add-social" type="button" disabled={links.length >= 3} onClick={() => setContent((current) => writeContentPath(current, path, [...(readContentPath(current, path) || []), { id: `social-${Date.now()}`, label: 'Email', value: '', href: '' }]))}><Plus /> Add social or contact link</button>
         <small>{links.length} / 3 added · Minimum 1, maximum 3</small>
       </div>;
     }
@@ -995,6 +1047,7 @@ function WebsiteContent({ onStartGuide }) {
         return next;
       });
       return <div className="admin-review-editor">
+        <div className="admin-review-help"><CircleHelp /><div><strong>When will a review appear?</strong><span>A review is used on the storefront only after Customer name, Review title and Review text are all completed and you publish the changes. Empty or unfinished reviews stay here as drafts and are ignored on the storefront. The photo is optional.</span></div></div>
         {reviews.map((review, index) => <article key={review.id || index}>
           <header><div><strong>Review {index + 1}</strong><small>{review.author || 'New customer review'}</small></div><button type="button" onClick={() => setContent((current) => writeContentPath(current, path, readContentPath(current, path).filter((_, itemIndex) => itemIndex !== index)))}><Trash2 /> Delete</button></header>
           <div className="admin-review-fields">
@@ -1002,13 +1055,12 @@ function WebsiteContent({ onStartGuide }) {
             <label>Customer name<input value={review.author || ''} onChange={(event) => updateReview(index, 'author', event.target.value)} placeholder="Customer name" /></label>
             <label className="wide">Review title<input value={review.title || ''} onChange={(event) => updateReview(index, 'title', event.target.value)} placeholder="Short review title" /></label>
             <label className="wide">Review text<textarea rows="4" value={review.copy || ''} onChange={(event) => updateReview(index, 'copy', event.target.value)} placeholder="Write the customer's review" /></label>
-            <label>Product name<input value={review.product || ''} onChange={(event) => updateReview(index, 'product', event.target.value)} placeholder="Product purchased" /></label>
             <label className="admin-review-image-upload">Review photo<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={upload(`${path}.${index}.image`, 'desktop')} /><span><ImagePlus /> {uploading === `${path}.${index}.image:desktop` ? 'Uploading…' : review.image ? 'Replace photo' : 'Upload photo'}</span></label>
           </div>
           {review.image && <img className="admin-review-image-preview" src={review.image} alt="Review preview" />}
         </article>)}
         {!reviews.length && <div className="admin-review-empty"><Heart /><strong>No customer reviews yet</strong><span>Add only genuine reviews here. Nothing will appear in the storefront review grid until a review is added and published.</span></div>}
-        <button className="admin-add-review" type="button" onClick={() => setContent((current) => writeContentPath(current, path, [...(readContentPath(current, path) || []), { id: `review-${Date.now()}`, rating: 5, author: '', title: '', copy: '', product: '', image: '' }]))}><Plus /> Add customer review</button>
+        <button className="admin-add-review" type="button" onClick={() => setContent((current) => writeContentPath(current, path, [...(readContentPath(current, path) || []), { id: `review-${Date.now()}`, rating: 5, author: '', title: '', copy: '', image: '' }]))}><Plus /> Add customer review</button>
       </div>;
     }
     if (path.endsWith('.sections')) {

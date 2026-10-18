@@ -93,6 +93,30 @@ function ResponsiveContentImage({ content, path, src, className = '', ...props }
   </>;
 }
 
+function socialHref({ label = '', value = '', href = '' }) {
+  const type = label.trim().toLowerCase();
+  const text = value.trim();
+  if (!text) return '';
+  if (type.includes('mail') || type.includes('gmail')) return `mailto:${text.replace(/^mailto:/i, '')}`;
+  if (type.includes('whatsapp') || type === 'wa') {
+    let digits = text.replace(/\D/g, '');
+    if (digits.startsWith('0')) digits = `60${digits.slice(1)}`;
+    return digits ? `https://wa.me/${digits}` : '';
+  }
+  if (type.includes('phone') || type.includes('telephone') || type.includes('call')) return `tel:${text.replace(/[^+\d]/g, '')}`;
+  if (/^https?:\/\//i.test(text)) return text;
+  if (type.includes('website') || type.includes('web')) return `https://${text.replace(/^\/+/, '')}`;
+  return href.trim();
+}
+
+const socialIconUrls = {
+  Instagram: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/instagram.svg',
+  Email: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/gmail.svg',
+  TikTok: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/tiktok.svg',
+  WhatsApp: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/whatsapp.svg',
+  Facebook: 'https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg'
+};
+
 function useSiteContent(page, fallback) {
   const previewing = new URLSearchParams(window.location.search).has('cmsPreview');
   const previewKey = `chrisea-cms-preview-${page}`;
@@ -957,9 +981,11 @@ function ProductPage() {
 
 function ReviewsPage() {
   const [rating, setRating] = useState('All');
-  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Instagram', value: '@chrisea.jewelry', href: 'https://instagram.com/chrisea.jewelry' }, { label: 'Email', value: 'hello@chrisea.com', href: 'mailto:hello@chrisea.com' }] } });
+  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Email', value: 'hello@chrisea.com' }] } });
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
-  const reviews = Array.isArray(reviewsContent.feed.items) ? reviewsContent.feed.items : [];
+  const reviews = (Array.isArray(reviewsContent.feed.items) ? reviewsContent.feed.items : []).filter((review) =>
+    review?.author?.trim() && review?.title?.trim() && review?.copy?.trim()
+  );
   const visibleReviews = reviews.filter((review) => {
     if (rating === 'All') return true;
     if (rating === 'With Photos') return Boolean(review.image);
@@ -980,8 +1006,8 @@ function ReviewsPage() {
           <div className="reviews-toolbar" aria-label="Filter reviews">{filters.map((item) => <button className={rating === item ? 'is-active' : ''} onClick={() => setRating(item)} key={item}>{item}</button>)}</div>
           <div className="reviews-grid">
             {visibleReviews.map((review, index) => <article className={`review-card ${review.image ? '' : 'is-text-only'}`} key={review.id || `${review.title}-${index}`}>
-              {review.image && <img src={review.image} alt={review.product || 'Customer review'} />}
-              <div className="review-card-copy"><span className="review-stars">{'★'.repeat(Number(review.rating || 5))}{'☆'.repeat(5 - Number(review.rating || 5))}</span><h3>{review.title}</h3><p>{review.copy}</p><footer><strong>{review.author || 'Customer'}</strong><span>● Verified purchase</span></footer>{review.product && <small>{review.product}</small>}</div>
+              {review.image && <img src={review.image} alt="Customer review" />}
+              <div className="review-card-copy"><span className="review-stars">{'★'.repeat(Number(review.rating || 5))}{'☆'.repeat(5 - Number(review.rating || 5))}</span><h3>{review.title}</h3><p>{review.copy}</p><footer><strong>{review.author}</strong><span>● Verified purchase</span></footer></div>
             </article>)}
             {!visibleReviews.length && <div className="reviews-empty"><Heart /><h3>{reviews.length ? 'No reviews match this filter.' : 'Customer stories are coming soon.'}</h3><p>{reviews.length ? 'Choose another rating to see more reviews.' : 'Genuine customer reviews will appear here once they are published.'}</p></div>}
           </div>
@@ -989,7 +1015,7 @@ function ReviewsPage() {
 
         <section className="reviews-cta">
           <div className="reviews-cta-image"><ResponsiveContentImage content={reviewsContent} path="cta.image" src={reviewsContent.cta.image} alt="CHRISÉA jewellery styled by our community" /></div>
-          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a className="reviews-cta-button" href={reviewsContent.cta.buttonHref}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a><div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => <a href={link.href} target={link.href?.startsWith('http') ? '_blank' : undefined} rel={link.href?.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><Share2 /><small>{link.label}</small><strong>{link.value}</strong></a>)}</div></div>
+          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a className="reviews-cta-button" href={reviewsContent.cta.buttonHref}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a><div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => { const destination = socialHref(link); return destination ? <a href={destination} target={destination.startsWith('http') ? '_blank' : undefined} rel={destination.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><img src={socialIconUrls[link.label] || socialIconUrls.Email} alt="" /><small>{link.label}</small><strong>{link.value}</strong></a> : null; })}</div></div>
         </section>
       </main>
       <SiteFooter />
