@@ -25,7 +25,7 @@ const AdminApp = React.lazy(() => import('./components/AdminApp'));
 const A = '/assets/products';
 const ABOUT_CONTENT_ENDPOINT = import.meta.env.VITE_ABOUT_CONTENT_ENDPOINT || '/content/about.json';
 const SHOP_PROMOTIONS_ENDPOINT = import.meta.env.VITE_SHOP_PROMOTIONS_ENDPOINT || '/content/shop-promotions.json';
-const DEPLOYMENT_SITE_URL = 'https://mediumvioletred-stingray-627422.hostingersite.com';
+const DEPLOYMENT_SITE_URL = 'https://xn--chrisa-fva.com';
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${DEPLOYMENT_SITE_URL}/api` : 'http://localhost:5000/api');
 const ADMIN_ENTRY_PATH = `/${String(import.meta.env.VITE_ADMIN_PATH || 'atelier-9q7m2x4k8v6p').replace(/^\/+|\/+$/g, '')}`;
 const SITE_URL = String(import.meta.env.VITE_SITE_URL || (import.meta.env.PROD ? DEPLOYMENT_SITE_URL : window.location.origin)).replace(/\/+$/, '');

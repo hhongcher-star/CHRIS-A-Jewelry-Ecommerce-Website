@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const siteUrl = String(process.env.VITE_SITE_URL || 'https://mediumvioletred-stingray-627422.hostingersite.com').replace(/\/+$/, '');
+const siteUrl = String(process.env.VITE_SITE_URL || 'https://xn--chrisa-fva.com').replace(/\/+$/, '');
 if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(siteUrl)) throw new Error('VITE_SITE_URL must be an HTTPS origin without a path');
 
 const publicDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { z } from 'zod';
-import { pool } from '../config/database.js';
+import { ensureReviewSchema, pool } from '../config/database.js';
 import { env } from '../config/env.js';
 import { AppError } from '../errors/app-error.js';
 
@@ -17,6 +17,7 @@ const reviewSchema = z.object({
 const digest = (value) => crypto.createHash('sha256').update(`${env.JWT_SECRET || 'local-review-key'}:${value}`).digest('hex');
 
 export async function submitReview(req, res) {
+  await ensureReviewSchema();
   const parsed = reviewSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError(400, 'INVALID_REVIEW', 'Please complete every review field correctly.');
   const review = parsed.data;
@@ -36,17 +37,20 @@ export async function submitReview(req, res) {
 }
 
 export async function publicReviews(_req, res) {
+  await ensureReviewSchema();
   const [rows] = await pool.query("SELECT id, customer_name AS author, rating, title, content AS copy, created_at FROM review_submissions WHERE status = 'approved' ORDER BY reviewed_at DESC, created_at DESC LIMIT 60");
   res.setHeader('Cache-Control', 'no-cache');
   res.json({ success: true, data: { reviews: rows } });
 }
 
 export async function adminReviews(_req, res) {
+  await ensureReviewSchema();
   const [rows] = await pool.query('SELECT id, customer_name, customer_email, rating, title, content, status, created_at, reviewed_at FROM review_submissions ORDER BY FIELD(status, \'pending\', \'approved\', \'rejected\'), created_at DESC LIMIT 250');
   res.json({ success: true, data: { reviews: rows } });
 }
 
 export async function moderateReview(req, res) {
+  await ensureReviewSchema();
   const id = Number(req.params.id);
   const parsed = z.object({ status: z.enum(['approved', 'rejected']) }).safeParse(req.body);
   if (!Number.isInteger(id) || id < 1 || !parsed.success) throw new AppError(400, 'INVALID_REVIEW_UPDATE', 'Choose a valid review decision.');
@@ -56,6 +60,7 @@ export async function moderateReview(req, res) {
 }
 
 export async function deleteReview(req, res) {
+  await ensureReviewSchema();
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id < 1) throw new AppError(400, 'INVALID_REVIEW_ID', 'This review is invalid.');
   const [result] = await pool.query('DELETE FROM review_submissions WHERE id = ?', [id]);
