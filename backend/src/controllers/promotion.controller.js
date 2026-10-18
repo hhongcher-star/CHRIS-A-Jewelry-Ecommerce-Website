@@ -5,7 +5,7 @@ const validationSchema = z.object({
   code: z.string().trim().max(50).optional().default(''),
   subtotal: z.coerce.number().min(0).max(999999),
   email: z.string().trim().toLowerCase().email().max(255).optional().or(z.literal('')),
-  phone: z.string().trim().min(7).max(30)
+  phone: z.string().trim().max(30).optional().default('')
 });
 
 const phoneDigits = (value) => String(value || '').replace(/\D/g, '');
@@ -42,6 +42,7 @@ export async function validatePromotion(req, res) {
   if (subtotal < Number(promotion.minimum_spend)) return invalid('MINIMUM_SPEND', { minimumSpend: Number(promotion.minimum_spend), shortfall: Number(promotion.minimum_spend) - subtotal });
   if (promotion.first_order_only) {
     const phone = phoneDigits(parsed.data.phone);
+    if (phone.length < 7) return invalid('FIRST_ORDER_DETAILS_REQUIRED');
     const [previousOrders] = await pool.query(`
       SELECT o.id FROM orders o
       WHERE o.status NOT IN ('cancelled', 'payment_rejected')
