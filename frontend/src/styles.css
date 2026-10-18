@@ -609,7 +609,7 @@ footer { background: linear-gradient(135deg, #430411, #430411); color: #f8f3e9; 
 .customer-review-status { margin: 18px 0 0; color: #6d1325; font: 600 12px/1.5 Montserrat, sans-serif; }
 .customer-review-submit { min-height: 50px; margin-top: 22px; padding: 0 25px; border: 1px solid #6d1325; background: #6d1325; color: #fffaf0; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .15em; text-transform: uppercase; }
 .customer-review-submit:disabled { cursor: wait; opacity: .62; }
-@media (max-width: 680px) { .customer-review-backdrop { padding: 0; align-items: end; } .customer-review-form { max-height: 94vh; padding: 34px 22px; } .customer-review-fields { grid-template-columns: 1fr; } .customer-review-fields label.wide { grid-column: auto; } }
+@media (max-width: 680px) { .customer-review-backdrop { padding: 12px; place-items: center; } .customer-review-form { max-height: calc(100dvh - 24px); padding: 34px 22px; } .customer-review-fields { grid-template-columns: 1fr; } .customer-review-fields label.wide { grid-column: auto; } }
 
 .cart-page { background: #f8f3e9; }
 .cart-hero { height: 235px; position: relative; overflow: hidden; background: #430411; }
