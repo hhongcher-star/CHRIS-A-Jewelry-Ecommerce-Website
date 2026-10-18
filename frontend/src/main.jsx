@@ -9,6 +9,7 @@ import {
   Gift,
   Heart,
   House,
+  Mail,
   Menu,
   Search,
   Share2,
@@ -967,7 +968,7 @@ const reviewSamples = [
 
 function ReviewsPage() {
   const [rating, setRating] = useState('All');
-  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words' }, social: { eyebrow: 'Spotted on you', title: 'Styled by You', description: 'A glimpse of how our community wears CHRISÉA. Share your look and become part of the story.', image1: '/assets/reviews/review-earrings.jpg', image2: '/assets/reviews/review-styling.jpg', image3: '/assets/reviews/review-necklace.jpg' }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review' } });
+  const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words' }, social: { eyebrow: 'Spotted on you', title: 'Styled by You', description: 'A glimpse of how our community wears CHRISÉA. Share your look and become part of the story.', image1: '/assets/reviews/review-earrings.jpg', image2: '/assets/reviews/review-styling.jpg', image3: '/assets/reviews/review-necklace.jpg' }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', image: '/assets/reviews/review-styling.jpg', instagramLabel: 'Instagram', instagramValue: '@chrisea.jewelry', instagramHref: 'https://instagram.com/chrisea.jewelry', emailLabel: 'Email', emailValue: 'hello@chrisea.com' } });
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
   return (
     <div className="page-shell reviews-page">
@@ -995,8 +996,10 @@ function ReviewsPage() {
           <div className="reviews-social-grid"><ResponsiveContentImage content={reviewsContent} path="social.image1" src={reviewsContent.social.image1} alt="Gold earrings styled by the community" /><ResponsiveContentImage content={reviewsContent} path="social.image2" src={reviewsContent.social.image2} alt="Gold ring styling detail" /><ResponsiveContentImage content={reviewsContent} path="social.image3" src={reviewsContent.social.image3} alt="Fine necklace styling detail" /></div>
         </section>
 
-        <section className="reviews-cta"><div><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a href="mailto:hello@chrisea.com">{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a></div></section>
-        <section className="reviews-service-strip section-pad"><div><Truck /><span><strong>Free shipping</strong>On orders over RM200</span></div><div><Gift /><span><strong>Beautiful packaging</strong>Designed with care</span></div><div><ShieldCheck /><span><strong>Secure payment</strong>Your information is safe</span></div><div><Heart /><span><strong>Need help?</strong>We’re here for you</span></div></section>
+        <section className="reviews-cta">
+          <div className="reviews-cta-image"><ResponsiveContentImage content={reviewsContent} path="cta.image" src={reviewsContent.cta.image} alt="CHRISÉA jewellery styled by our community" /></div>
+          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><a className="reviews-cta-button" href={`mailto:${reviewsContent.cta.emailValue}`}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a><div className="reviews-cta-links"><a href={reviewsContent.cta.instagramHref} target="_blank" rel="noreferrer"><Camera /><small>{reviewsContent.cta.instagramLabel}</small><strong>{reviewsContent.cta.instagramValue}</strong></a><a href={`mailto:${reviewsContent.cta.emailValue}`}><Mail /><small>{reviewsContent.cta.emailLabel}</small><strong>{reviewsContent.cta.emailValue}</strong></a></div></div>
+        </section>
       </main>
       <SiteFooter />
     </div>

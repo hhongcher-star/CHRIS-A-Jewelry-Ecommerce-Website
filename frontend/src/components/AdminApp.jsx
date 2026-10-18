@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, ArrowLeft, ArrowUpRight, BarChart3, Bell, Boxes, ChevronDown, ChevronRight, ChevronUp, CircleDollarSign,
   CircleHelp, ClipboardCheck, Diamond, Eye, EyeOff, Gem, Heart, LayoutDashboard, LockKeyhole,
-  ImagePlus, LogOut, Mail, Menu, Package, PackageOpen, Plus, Search, ShoppingBag,
+  Download, ImagePlus, LogOut, Mail, Menu, Package, PackageOpen, Plus, Search, ShoppingBag,
   RotateCcw, SlidersHorizontal, Sparkles, Tag, Trash2, UserRound, Users, X
 } from 'lucide-react';
 import './admin.css';
@@ -720,8 +720,8 @@ const contentPages = {
   },
   reviews: {
     label: 'Reviews',
-    defaults: { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces become part of your story.', image: '/assets/reviews/reviews-hero.jpg' }, feed: { eyebrow: 'Community notes', title: 'In their own words' }, social: { eyebrow: 'Spotted on you', title: 'Styled by You', description: 'A glimpse of how our community wears CHRISÉA.', image1: '/assets/reviews/review-earrings.jpg', image2: '/assets/reviews/review-styling.jpg', image3: '/assets/reviews/review-necklace.jpg' }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review' } },
-    fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['feed.eyebrow','Reviews small title'],['feed.title','Reviews title'],['social.eyebrow','Social small title'],['social.title','Social title'],['social.description','Social description','textarea'],['social.image1','Social image 1','image'],['social.image2','Social image 2','image'],['social.image3','Social image 3','image'],['cta.eyebrow','Review CTA small title'],['cta.title','Review CTA title'],['cta.description','Review CTA description','textarea'],['cta.buttonLabel','Review CTA button']]
+    defaults: { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces become part of your story.', image: '/assets/reviews/reviews-hero.jpg' }, feed: { eyebrow: 'Community notes', title: 'In their own words' }, social: { eyebrow: 'Spotted on you', title: 'Styled by You', description: 'A glimpse of how our community wears CHRISÉA.', image1: '/assets/reviews/review-earrings.jpg', image2: '/assets/reviews/review-styling.jpg', image3: '/assets/reviews/review-necklace.jpg' }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', image: '/assets/reviews/review-styling.jpg', instagramLabel: 'Instagram', instagramValue: '@chrisea.jewelry', instagramHref: 'https://instagram.com/chrisea.jewelry', emailLabel: 'Email', emailValue: 'hello@chrisea.com' } },
+    fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['feed.eyebrow','Reviews small title'],['feed.title','Reviews title'],['social.eyebrow','Social small title'],['social.title','Social title'],['social.description','Social description','textarea'],['social.image1','Social image 1','image'],['social.image2','Social image 2','image'],['social.image3','Social image 3','image'],['cta.eyebrow','Review CTA small title'],['cta.title','Review CTA title'],['cta.description','Review CTA description','textarea'],['cta.buttonLabel','Review CTA button'],['cta.image','Review CTA image','image'],['cta.instagramLabel','Instagram label'],['cta.instagramValue','Instagram account'],['cta.instagramHref','Instagram link'],['cta.emailLabel','Email label'],['cta.emailValue','Email address']]
   },
   announcement: { label: 'Announcement bar', defaults: { messages: ['Complimentary shipping on orders over RM200', 'Gift-ready packaging'] }, fields: [['messages','Announcements','products']] },
   footer: { label: 'Footer', defaults: { brandText: 'Timeless pieces for modern romantics. Designed to celebrate every chapter.', socialLabel: 'Follow our journey', shopTitle: 'Shop', careTitle: 'Customer care', newsletterTitle: 'Join our journey', newsletterText: 'Be the first to know about new arrivals, exclusive offers and more.', copyright: '© 2026 CHRISÉA Jewelry. All rights reserved.', legalText: 'Privacy Policy | Terms & Conditions' }, fields: [['brandText','Brand description','textarea'],['socialLabel','Social link text'],['shopTitle','Shop heading'],['careTitle','Customer care heading'],['newsletterTitle','Newsletter heading'],['newsletterText','Newsletter description','textarea'],['copyright','Copyright text'],['legalText','Legal links text']] }
@@ -772,6 +772,30 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
   const x = Number(adjustment.x ?? 50);
   const y = Number(adjustment.y ?? 50);
   const fit = adjustment.fit || 'contain';
+  const downloadImage = async (imageUrl, imageDevice) => {
+    if (!imageUrl) return;
+    const safeName = path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+    const extension = imageUrl.match(/\.(jpe?g|png|webp)(?:[?#]|$)/i)?.[1]?.replace('jpeg', 'jpg') || 'jpg';
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error('Image download failed');
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `chrisea-${safeName}-${imageDevice}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `chrisea-${safeName}-${imageDevice}.${extension}`;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.click();
+    }
+  };
   const update = (key, value) => onChange((current) => ({
     ...current,
     _imageAdjustments: {
@@ -796,6 +820,7 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
         <header><strong>DESKTOP IMAGE</strong><span>Landscape</span></header>
         {desktopImage && <div className="admin-content-image-preview is-desktop"><img src={desktopImage} alt="Desktop preview" style={previewStyle('desktop')} /></div>}
         <label><ImagePlus /> {uploading === `${path}:desktop` ? 'Uploading…' : 'Replace desktop image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'desktop')} /></label>
+        <button className="admin-download-image" type="button" disabled={!desktopImage} onClick={() => downloadImage(desktopImage, 'desktop')}><Download /> Download desktop image</button>
         <button className={`admin-adjust-image ${device === 'desktop' ? 'active' : ''}`} type="button" onClick={() => onSelectDevice('desktop')}><SlidersHorizontal /> {device === 'desktop' ? 'Adjusting desktop' : 'Adjust desktop'}</button>
       </section>
       <section className="admin-device-image-card is-mobile-card">
@@ -803,6 +828,7 @@ function ContentImageField({ content, path, device, uploading, onUpload, onChang
         {(mobileImage || desktopImage) && <div className="admin-content-image-preview is-mobile"><img src={mobileImage || desktopImage} alt="Mobile preview" style={previewStyle('mobile')} /></div>}
         {!mobileImage && <small>Currently using the desktop image</small>}
         <label><ImagePlus /> {uploading === `${path}:mobile` ? 'Uploading…' : mobileImage ? 'Replace mobile image' : 'Upload mobile image'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={onUpload(path, 'mobile')} /></label>
+        <button className="admin-download-image" type="button" disabled={!(mobileImage || desktopImage)} onClick={() => downloadImage(mobileImage || desktopImage, 'mobile')}><Download /> Download mobile image</button>
         <button className={`admin-adjust-image ${device === 'mobile' ? 'active' : ''}`} type="button" onClick={() => onSelectDevice('mobile')}><SlidersHorizontal /> {device === 'mobile' ? 'Adjusting mobile' : 'Adjust mobile'}</button>
       </section>
     </div>

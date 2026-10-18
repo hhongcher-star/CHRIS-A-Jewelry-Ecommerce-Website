@@ -1170,6 +1170,9 @@
 .admin-device-image-card > label { min-height: 46px; padding: 0 14px; border: 1px solid #6d1325; display: inline-flex; align-items: center; justify-content: center; gap: 9px; color: #6d1325; cursor: pointer; text-align: center; }
 .admin-device-image-card.is-mobile-card > label { background: #6d1325; color: #fffaf1; }
 .admin-device-image-card svg { width: 17px; flex: 0 0 auto; }
+.admin-download-image { min-height: 42px; border: 1px solid #6d1325; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fffdf8; color: #6d1325; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.admin-download-image:hover { background: #f4eadd; }
+.admin-download-image:disabled { cursor: not-allowed; opacity: .45; }
 .admin-adjust-image { min-height: 42px; border: 1px solid #b99d96; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: #6d1325; background: transparent; cursor: pointer; font: 700 9px Montserrat, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 .admin-adjust-image.active { border-color: #6d1325; color: #fffaf1; background: #6d1325; }
 .admin-image-help { display: block; color: #765f59; font: 12px/1.5 Arial, sans-serif; }
