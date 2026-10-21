@@ -77,6 +77,12 @@ Creating an order must recalculate all totals on the server. Product name, SKU a
 
 Uploading a payment proof changes an eligible order from `pending_payment` to `pending_verification`. It must never automatically produce `payment_confirmed`.
 
+Current storefront checkout creates the order before showing the payment QR code.
+The implemented `POST /api/orders/:id/payment-notice` accepts the secret
+`paymentNoticeToken` returned by `POST /api/orders` and moves the order to
+`pending_verification`. The notice is only a customer claim; an administrator
+must check the receiving account before setting `payment_confirmed`.
+
 ## Promotions
 
 | Method | Endpoint | Access | Description |

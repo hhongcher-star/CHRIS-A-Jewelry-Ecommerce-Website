@@ -33,7 +33,10 @@ const createProductSchema = z.object({
 
 const updateProductSchema = createProductSchema.omit({ imageUrl: true }).extend({
   status: z.enum(['draft', 'active', 'archived']),
-  variants: z.array(productVariantSchema.extend({ id: z.coerce.number().int().positive() })).min(1).max(50)
+  variants: z.array(productVariantSchema.extend({
+    id: z.coerce.number().int().positive(),
+    expectedStockQuantity: z.coerce.number().int().min(0).max(999999)
+  })).min(1).max(50)
 });
 
 const slugify = (value) => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -44,7 +47,7 @@ const categorySchema = z.object({
 });
 
 const orderStatusSchema = z.object({
-  status: z.enum(['pending_payment', 'payment_confirmed', 'shipped', 'cancelled'])
+  status: z.enum(['pending_payment', 'pending_verification', 'payment_confirmed', 'shipped', 'cancelled'])
 });
 
 const stockAdjustmentSchema = z.object({ delta: z.coerce.number().int().min(-1).max(1).refine((value) => value !== 0) });
@@ -130,7 +133,7 @@ export async function dashboard(_req, res) {
         (SELECT COUNT(*) FROM product_variants WHERE is_active = TRUE) AS variants,
         (SELECT COALESCE(SUM(stock_quantity), 0) FROM product_variants WHERE is_active = TRUE) AS stock,
         (SELECT COUNT(*) FROM orders WHERE deleted_at IS NULL AND status <> 'cancelled') AS orders,
-        (SELECT COUNT(*) FROM orders WHERE deleted_at IS NULL AND status = 'pending_payment') AS payments_to_review,
+        (SELECT COUNT(*) FROM orders WHERE deleted_at IS NULL AND status IN ('pending_payment', 'pending_verification')) AS payments_to_review,
         (SELECT COUNT(*) FROM users WHERE role = 'customer') AS customers,
         (SELECT COALESCE(SUM(grand_total), 0) FROM orders WHERE deleted_at IS NULL AND status <> 'cancelled') AS total_sales,
         (SELECT COALESCE(AVG(grand_total), 0) FROM orders WHERE deleted_at IS NULL AND status <> 'cancelled') AS average_order_value
@@ -331,10 +334,19 @@ export async function updateProduct(req, res) {
     const salePrice = Number((product.price * (1 - product.discountPercent / 100)).toFixed(2));
     for (const variant of product.variants) {
       if (!allowedVariantIds.has(Number(variant.id))) throw new AppError(400, 'INVALID_VARIANT', 'One of the product variants is invalid.');
+      if (variant.stockQuantity !== variant.expectedStockQuantity) {
+        const [[current]] = await connection.query('SELECT stock_quantity FROM product_variants WHERE id = ? AND product_id = ? FOR UPDATE', [variant.id, productId]);
+        if (Number(current.stock_quantity) !== variant.expectedStockQuantity) {
+          throw new AppError(409, 'STOCK_CHANGED', 'Stock changed while this product was open. Reload it before editing stock.');
+        }
+        const delta = variant.stockQuantity - variant.expectedStockQuantity;
+        await connection.query('UPDATE product_variants SET stock_quantity = ? WHERE id = ? AND product_id = ?', [variant.stockQuantity, variant.id, productId]);
+        await connection.query('INSERT INTO inventory_movements (variant_id, quantity_change, reason, reference, created_by) VALUES (?, ?, ?, ?, ?)', [variant.id, delta, 'adjustment', 'Admin product editor', req.user.id]);
+      }
       await connection.query(`
-        UPDATE product_variants SET sku = ?, variant_name = ?, price = ?, stock_quantity = ?, is_active = ?
+        UPDATE product_variants SET sku = ?, variant_name = ?, price = ?, is_active = ?
         WHERE id = ? AND product_id = ?
-      `, [variant.sku, variant.variantName, salePrice, variant.stockQuantity, variant.isActive, variant.id, productId]);
+      `, [variant.sku, variant.variantName, salePrice, variant.isActive, variant.id, productId]);
     }
 
     await connection.query('DELETE FROM product_images WHERE product_id = ?', [productId]);
@@ -436,6 +448,7 @@ export async function updateOrderStatus(req, res) {
     await connection.beginTransaction();
     const [rows] = await connection.query('SELECT status, order_number, deleted_at FROM orders WHERE id = ? FOR UPDATE', [orderId]);
     if (!rows.length) throw new AppError(404, 'ORDER_NOT_FOUND', 'This order could not be found.');
+    if (rows[0].deleted_at) throw new AppError(409, 'ORDER_IN_RECYCLE_BIN', 'Restore this order before changing its status.');
     const previousStatus = rows[0].status;
     const nextStatus = parsed.data.status;
     if (previousStatus !== nextStatus) {

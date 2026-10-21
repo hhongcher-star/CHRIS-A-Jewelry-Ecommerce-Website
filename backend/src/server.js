@@ -2,8 +2,22 @@ import { createApp } from './app.js';
 import { checkDatabaseConnection, closeDatabase, ensurePaymentSchema, ensureReviewSchema } from './config/database.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
+import { expirePendingOrders } from './controllers/order.controller.js';
 
 const app = createApp();
+let expiryRunning = false;
+const expiryTimer = setInterval(async () => {
+  if (expiryRunning) return;
+  expiryRunning = true;
+  try {
+    const checked = await expirePendingOrders();
+    if (checked) logger.info({ checked }, 'Expired unpaid orders checked');
+  } catch (error) {
+    logger.error({ err: error }, 'Could not release expired order stock');
+  } finally {
+    expiryRunning = false;
+  }
+}, 60_000);
 const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, environment: env.NODE_ENV }, 'API server started');
 
@@ -14,6 +28,7 @@ const server = app.listen(env.PORT, () => {
 });
 
 async function shutdown(signal) {
+  clearInterval(expiryTimer);
   logger.info({ signal }, 'Shutting down API server');
   server.close(async (serverError) => {
     try {

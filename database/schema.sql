@@ -180,6 +180,7 @@ CREATE TABLE orders (
     'cancelled'
   ) NOT NULL DEFAULT 'pending_payment',
   payment_method VARCHAR(120) NOT NULL,
+  payment_notice_token_hash CHAR(64) NULL UNIQUE,
   currency CHAR(3) NOT NULL DEFAULT 'MYR',
   subtotal DECIMAL(12,2) NOT NULL,
   discount_total DECIMAL(12,2) NOT NULL DEFAULT 0,

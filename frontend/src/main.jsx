@@ -341,25 +341,64 @@ const writeCart = (items) => {
   window.localStorage.setItem(CART_KEY, JSON.stringify(items));
   window.dispatchEvent(new CustomEvent('chrisea-cart-change', { detail: items }));
 };
-const addCartItem = (product, quantity = 1) => {
-  const items = readCart();
-  if (product.stock === 0) return items;
+
+async function notifyPayment(receipt) {
+  const response = await fetch(`${API_URL}/orders/${receipt.orderId}/payment-notice`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentNoticeToken: receipt.paymentNoticeToken })
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error?.message || 'The payment notice could not be sent.');
+  return { ...receipt, status: result.data.status, reviewExpiresAt: result.data.reviewExpiresAt };
+}
+const addCartItem = async (product, quantity = 1) => {
+  const slug = productSlug(product);
+  const response = await fetch(`${API_URL}/products/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Unable to verify stock. Please try again.');
+  const result = await response.json();
+  const liveProduct = normaliseCatalogueProduct(result.data?.product || {});
   const selectedVariantId = product.selectedVariantId || product.purchaseVariant?.id || null;
-  const cartKey = `${productSlug(product)}:${selectedVariantId || ''}`;
+  if (selectedVariantId && String(liveProduct.purchaseVariant?.id) !== String(selectedVariantId)) {
+    throw new Error('This item option is no longer available.');
+  }
+  const stock = Math.max(0, Math.floor(Number(liveProduct.purchaseVariant?.stock_quantity ?? liveProduct.stock) || 0));
+  const requestedQuantity = Math.floor(Number(quantity));
+  if (!Number.isFinite(requestedQuantity) || requestedQuantity < 1) throw new Error('Please select a valid quantity.');
+  const items = readCart();
+  const cartKey = `${slug}:${selectedVariantId || ''}`;
   const existing = items.find((item) => (item.key || `${item.slug || item.name}:`) === cartKey);
-  const cartItem = { key: cartKey, slug: productSlug(product), name: product.name, variantId: selectedVariantId, quantity };
-  const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: item.quantity + quantity } : item) : [...items, cartItem];
+  const existingQuantity = Math.max(0, Math.floor(Number(existing?.quantity) || 0));
+  if (existingQuantity + requestedQuantity > stock) {
+    throw new Error(stock === 0 ? 'This item is sold out.' : `Only ${stock} item${stock === 1 ? '' : 's'} available. You already have ${existingQuantity} in your cart.`);
+  }
+  const cartItem = { key: cartKey, slug, name: liveProduct.name || product.name, variantId: selectedVariantId, quantity: requestedQuantity };
+  const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: existingQuantity + requestedQuantity } : item) : [...items, cartItem];
   writeCart(next);
   return next;
 };
 
-function addCartItemAnimated(event, product, quantity = 1, onAdded) {
+async function addCartItemAnimated(event, product, quantity = 1, onAdded) {
   const button = event?.currentTarget;
   const bag = document.querySelector('.bag-button');
   const source = button?.closest('article, .product-detail-grid')?.querySelector('.product-main-image img, .shop-image-primary, img') || document.querySelector('.product-main-image img');
-  const finish = () => {
-    const next = addCartItem(product, quantity);
+  const original = button?.innerHTML;
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'CHECKING STOCK…';
+  }
+  let next;
+  try {
+    next = await addCartItem(product, quantity);
     onAdded?.(next);
+  } catch (error) {
+    if (button) {
+      button.textContent = error.message;
+      window.setTimeout(() => { if (button.isConnected) { button.innerHTML = original; button.disabled = Number(product.stock) === 0; } }, 2200);
+    }
+    return;
+  }
+  const finish = () => {
     if (bag) {
       bag.classList.remove('bag-pop');
       void bag.offsetWidth;
@@ -368,10 +407,9 @@ function addCartItemAnimated(event, product, quantity = 1, onAdded) {
     }
   };
   if (button) {
-    const original = button.innerHTML;
     button.classList.add('is-added');
     button.textContent = '✓ ADDED TO BAG';
-    window.setTimeout(() => { if (button.isConnected) { button.innerHTML = original; button.classList.remove('is-added'); } }, 1500);
+    window.setTimeout(() => { if (button.isConnected) { button.innerHTML = original; button.classList.remove('is-added'); button.disabled = Number(product.stock) === 0; } }, 1500);
   }
   if (!bag || !source || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     finish();
@@ -969,7 +1007,19 @@ function ProductPage() {
                 <div className="quantity-control" aria-label="Quantity"><button disabled={soldOut} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button><span>{quantity}</span><button disabled={soldOut} onClick={() => setQuantity((value) => Math.min(typeof stock === 'number' ? stock : value + 1, value + 1))}>+</button></div>
                 <button className="product-add" disabled={soldOut} onClick={(event) => addCartItemAnimated(event, cartProduct, quantity)}>{soldOut ? 'Sold out' : 'Add to cart'} {!soldOut && <span>— {displayPrice}</span>}</button>
               </div>
-              <button className="product-buy-now" disabled={soldOut} onClick={() => { addCartItem(cartProduct, quantity); window.location.href = '/cart'; }}>{soldOut ? 'Currently unavailable' : 'Buy it now'} {!soldOut && <ArrowRight />}</button>
+              <button className="product-buy-now" disabled={soldOut} onClick={async (event) => {
+                const button = event.currentTarget;
+                const original = button.innerHTML;
+                button.disabled = true;
+                button.textContent = 'CHECKING STOCK…';
+                try {
+                  await addCartItem(cartProduct, quantity);
+                  window.location.href = '/cart';
+                } catch (error) {
+                  button.textContent = error.message;
+                  window.setTimeout(() => { if (button.isConnected) { button.innerHTML = original; button.disabled = soldOut; } }, 2200);
+                }
+              }}>{soldOut ? 'Currently unavailable' : 'Buy it now'} {!soldOut && <ArrowRight />}</button>
             </div>
           </div>
         </section>
@@ -1084,6 +1134,9 @@ function CartPage() {
   const [checkoutError, setCheckoutError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState(null);
+  const [reportingPayment, setReportingPayment] = useState(false);
+  const [paymentNoticeError, setPaymentNoticeError] = useState('');
   const selectedPayment = availablePaymentMethods.find((method) => String(method.id) === String(checkout.paymentMethod)) || availablePaymentMethods[0];
   useEffect(() => {
     if (!availablePaymentMethods.some((method) => String(method.id) === String(checkout.paymentMethod))) setCheckout((current) => ({ ...current, paymentMethod: availablePaymentMethods[0].id }));
@@ -1102,6 +1155,22 @@ function CartPage() {
       stock: product.stock,
     };
   }).filter(Boolean);
+  useEffect(() => {
+    if (!catalogueProducts.length) return;
+    let changed = false;
+    const next = cart.map((item) => {
+      const product = catalogueProducts.find((candidate) => candidate.slug === item.slug || candidate.name === item.name);
+      if (!product || Number(product.stock) < 1) return item;
+      const quantity = Math.max(1, Math.min(Math.floor(Number(item.quantity) || 1), Math.floor(Number(product.stock))));
+      if (quantity === item.quantity) return item;
+      changed = true;
+      return { ...item, quantity };
+    });
+    if (changed) {
+      setCart(next);
+      writeCart(next);
+    }
+  }, [catalogueProducts]);
   const subtotal = cartItems.reduce((total, item) => total + Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity, 0);
   const total = subtotal * (1 - discount);
   const recommendationIds = (cartContent.recommendations.productIds || []).map(String);
@@ -1110,24 +1179,43 @@ function CartPage() {
   const recommendations = [...selectedRecommendations, ...availableRecommendations.filter((product) => !recommendationIds.includes(String(product.id)))].slice(0, 4);
   const cartBenefits = cartContent.benefits.items || [];
   const syncCart = (next) => { setCart(next); writeCart(next); };
-  const updateQuantity = (key, amount) => syncCart(cart.map((item) => (item.key || `${item.slug || item.name}:`) === key ? { ...item, quantity: Math.max(1, item.quantity + amount) } : item));
+  const updateQuantity = async (key, amount) => {
+    const cartItem = cartItems.find((item) => item.cartKey === key);
+    if (!cartItem) return;
+    if (amount > 0) {
+      try {
+        setCheckoutError('');
+        setCart(await addCartItem({ ...cartItem, selectedVariantId: cartItem.variantId }, amount));
+      } catch (error) {
+        setCheckoutError(error.message);
+      }
+      return;
+    }
+    syncCart(cart.map((item) => (item.key || `${item.slug || item.name}:`) === key ? { ...item, quantity: Math.max(1, Number(item.quantity) + amount) } : item));
+  };
   const removeItem = (key) => syncCart(cart.filter((item) => (item.key || `${item.slug || item.name}:`) !== key));
-  const addRecommended = (product) => {
-    const next = addCartItem(product);
-    setCart(next);
+  const addRecommended = async (product) => {
+    try { setCart(await addCartItem(product)); } catch (error) { setCheckoutError(error.message); }
   };
   useEffect(() => {
     if (!subtotal || promo.trim()) return;
-    fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: '' }) })
+    let active = true;
+    fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: '', phone: checkout.phone }) })
       .then((response) => response.json()).then((result) => {
+        if (!active) return;
         if (result.data?.valid) {
           const shipsFree = Boolean(result.data.promotion.free_shipping);
           setDiscount(Number(result.data.discountTotal) / subtotal);
           setFreeShipping(shipsFree);
           setPromoMessage(`${result.data.promotion.name} applied automatically — ${Number(result.data.promotion.discount_value)}% off${shipsFree ? ' + free shipping' : ''}`);
+        } else {
+          setDiscount(0);
+          setFreeShipping(false);
+          setPromoMessage('');
         }
       }).catch(() => {});
-  }, [subtotal, promo]);
+    return () => { active = false; };
+  }, [subtotal, promo, checkout.phone]);
   const applyPromo = async () => {
     const code = promo.trim().toUpperCase();
     if (!code) { setDiscount(0); setFreeShipping(false); setPromoMessage('Enter a promo code'); return; }
@@ -1165,15 +1253,11 @@ function CartPage() {
     } catch { setDiscount(0); setFreeShipping(false); setPromoMessage('Unable to validate this promo code'); }
   };
   const updateCheckout = (key) => (event) => { setCheckout((current) => ({ ...current, [key]: event.target.value })); setCheckoutError(''); };
-  const openPayment = () => {
+  const openPayment = async () => {
     const required = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'postcode'];
     if (required.some((key) => !checkout[key].trim())) { setCheckoutError('Please complete your contact and delivery details.'); return; }
     if (checkout.email && !/^\S+@\S+\.\S+$/.test(checkout.email)) { setCheckoutError('Please enter a valid email address or leave it blank.'); return; }
     if (cartItems.some((item) => !item.variantId)) { setCheckoutError('One of these products needs to be refreshed before checkout.'); return; }
-    setCheckoutError('');
-    setPaymentOpen(true);
-  };
-  const proceedToReceipt = async () => {
     setPlacingOrder(true);
     setCheckoutError('');
     try {
@@ -1185,16 +1269,30 @@ function CartPage() {
         const cartItem = cartItems.find((item) => Number(item.variantId) === Number(line.variantId));
         return { ...cartItem, ...line, image: cartItem?.image, detail: cartItem?.detail };
       });
-      const receipt = { id: order.orderNumber, placedAt: new Date().toISOString(), items: receiptItems, subtotal: order.subtotal, discount: order.discount / Math.max(order.subtotal, 1), shipping: order.shipping, total: order.total, customer: order.customer, status: order.status };
+      const receipt = { id: order.orderNumber, orderId: order.id, paymentNoticeToken: order.paymentNoticeToken, placedAt: new Date().toISOString(), items: receiptItems, subtotal: order.subtotal, discount: order.discount / Math.max(order.subtotal, 1), shipping: order.shipping, total: order.total, customer: order.customer, status: order.status, paymentMethod: selectedPayment.name, paymentImage: selectedPayment.image, paymentInformation: selectedPayment.information, paymentWindowHours: order.paymentWindowHours, paymentExpiresAt: order.paymentExpiresAt };
       window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(receipt));
       catalogueProductsCache = null;
       writeCart([]);
-      window.location.href = '/receipt';
+      setPlacedOrder(receipt);
+      setPaymentOpen(true);
     } catch (orderError) {
       setCheckoutError(orderError.message);
-      setPaymentOpen(false);
     } finally {
       setPlacingOrder(false);
+    }
+  };
+  const proceedToReceipt = () => { window.location.href = '/receipt'; };
+  const reportPlacedPayment = async () => {
+    setReportingPayment(true);
+    setPaymentNoticeError('');
+    try {
+      const updated = await notifyPayment(placedOrder);
+      window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
+      proceedToReceipt();
+    } catch (error) {
+      setPaymentNoticeError(error.message);
+    } finally {
+      setReportingPayment(false);
     }
   };
 
@@ -1223,7 +1321,7 @@ function CartPage() {
             {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email <small>Optional</small><input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" required /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<div className="cart-payment-method">Touch 'n Go QR</div></label></div>}
             {cartItems.length > 0 && <label className="cart-payment-picker">Payment method<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}>{availablePaymentMethods.map((method, index) => <option value={method.id} key={method.id || index}>{method.name}</option>)}</select></label>}
             {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
-            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={openPayment}>Place order <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
+            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={openPayment}>{placingOrder ? 'Creating order…' : 'Place order'} <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
             <a className="cart-continue" href="/shop">Continue shopping</a>
             <div className="cart-promo"><label htmlFor="promo">Have a promo code?</label><div><input id="promo" value={promo} onChange={(event) => setPromo(event.target.value)} placeholder="Enter promo code" /><button onClick={applyPromo}>Apply</button></div>{promoMessage && <p>{promoMessage}</p>}</div>
             <div className="cart-benefits"><div><Truck /><span><strong>{cartBenefits[0]?.title}</strong>{cartBenefits[0]?.text}</span></div><div><Gift /><span><strong>{cartBenefits[1]?.title}</strong>{cartBenefits[1]?.text}</span></div><div><ShieldCheck /><span><strong>{cartBenefits[2]?.title}</strong>{cartBenefits[2]?.text}</span></div></div>
@@ -1245,17 +1343,18 @@ function CartPage() {
           <button className="promo-success-done" type="button" onClick={() => setPromoSuccess(null)}>Continue checkout <ArrowRight size={14} /></button>
         </section>
       </div>}
-      {paymentOpen && createPortal(<div className="qr-payment-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !placingOrder) setPaymentOpen(false); }}>
+      {paymentOpen && createPortal(<div className="qr-payment-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) proceedToReceipt(); }}>
         <section className="qr-payment-modal" role="dialog" aria-modal="true" aria-labelledby="qr-payment-title">
-          <button className="qr-payment-close" type="button" disabled={placingOrder} onClick={() => setPaymentOpen(false)} aria-label="Close payment window"><X /></button>
+          <button className="qr-payment-close" type="button" onClick={proceedToReceipt} aria-label="View order receipt"><X /></button>
           {selectedPayment.kicker && <p className="qr-payment-kicker">{selectedPayment.kicker}</p>}
           <h2 id="qr-payment-title">{selectedPayment.title || selectedPayment.name}</h2>
           {selectedPayment.information && <p className="qr-payment-copy">{selectedPayment.information}</p>}
           {selectedPayment.image && <div className="qr-payment-code"><img src={selectedPayment.image} alt={`${selectedPayment.name} payment information`} /></div>}
-          <div className="qr-payment-total"><span>Amount to transfer</span><strong>RM {(total + (freeShipping || total >= 200 ? 0 : shippingPrice)).toFixed(2)}</strong></div>
-          <button className="qr-payment-confirm" type="button" disabled={placingOrder} onClick={proceedToReceipt}>{placingOrder ? 'Creating your order…' : selectedPayment.confirmLabel || 'Continue'} {!placingOrder && <ArrowRight size={14} />}</button>
-          <button className="qr-payment-cancel" type="button" disabled={placingOrder} onClick={() => setPaymentOpen(false)}>Pay later</button>
-          <small>Please only continue after the transfer is complete. Your order will be recorded as pending payment confirmation.</small>
+          <div className="qr-payment-total"><span>Amount to transfer · {placedOrder?.id}</span><strong>RM {Number(placedOrder?.total || 0).toFixed(2)}</strong></div>
+          {paymentNoticeError && <p role="alert">{paymentNoticeError}</p>}
+          <button className="qr-payment-confirm" type="button" disabled={reportingPayment} onClick={reportPlacedPayment}>{reportingPayment ? 'Reporting payment…' : 'I have paid — send for verification'} <ArrowRight size={14} /></button>
+          <button className="qr-payment-cancel" type="button" onClick={proceedToReceipt}>Pay later</button>
+          <small>Your order is reserved for {placedOrder?.paymentWindowHours || 2} hours. Please pay within this time and share your payment record for verification.</small>
         </section>
       </div>, document.body)}
       <SiteFooter />
@@ -1264,12 +1363,31 @@ function CartPage() {
 }
 
 function ReceiptPage() {
-  const [receipt] = useState(() => {
+  const [receipt, setReceipt] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem('chrisea-latest-receipt') || 'null'); } catch { return null; }
   });
   const [shareMessage, setShareMessage] = useState('');
   const [showSharePrompt, setShowSharePrompt] = useState(Boolean(receipt));
   const [receiptImageUrl, setReceiptImageUrl] = useState('');
+  const [paymentNoticeError, setPaymentNoticeError] = useState('');
+  const [reportingPayment, setReportingPayment] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000); return () => window.clearInterval(timer); }, []);
+  const paymentDeadline = receipt?.status === 'pending_verification' ? receipt.reviewExpiresAt : receipt?.paymentExpiresAt;
+  const paymentExpired = Boolean(paymentDeadline && currentTime >= new Date(paymentDeadline).getTime());
+  const reportReceiptPayment = async () => {
+    setReportingPayment(true);
+    setPaymentNoticeError('');
+    try {
+      const updated = await notifyPayment(receipt);
+      window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
+      setReceipt(updated);
+    } catch (error) {
+      setPaymentNoticeError(error.message);
+    } finally {
+      setReportingPayment(false);
+    }
+  };
   const placedDate = receipt ? new Intl.DateTimeFormat('en-MY', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(receipt.placedAt)) : '';
   const createReceiptImage = async () => {
     if (!receipt) throw new Error('No receipt');
@@ -1297,11 +1415,11 @@ function ReceiptPage() {
     ctx.textAlign = 'center';
     ctx.fillStyle = burgundy;
     ctx.font = '600 18px Montserrat, sans-serif';
-    ctx.fillText('OFFICIAL RECEIPT', width / 2, 92);
+    ctx.fillText('ORDER SUMMARY', width / 2, 92);
     ctx.font = '500 60px Georgia, serif';
     ctx.fillText('CHRISÉA Jewellery', width / 2, 165);
     ctx.font = 'italic 25px Georgia, serif';
-    ctx.fillText('Your order is confirmed.', width / 2, 220);
+    ctx.fillText('Order received. Payment pending.', width / 2, 220);
     ctx.beginPath(); ctx.moveTo(90, 260); ctx.lineTo(width - 90, 260); ctx.stroke();
     ctx.textAlign = 'left';
     ctx.font = '600 15px Montserrat, sans-serif';
@@ -1311,7 +1429,7 @@ function ReceiptPage() {
     ctx.font = '28px Georgia, serif';
     ctx.fillText(receipt.id, 90, 350);
     ctx.fillText(placedDate, 455, 350);
-    ctx.fillText('Being prepared', 850, 350);
+    ctx.fillText('Pending payment', 850, 350);
     ctx.beginPath(); ctx.moveTo(90, 390); ctx.lineTo(width - 90, 390); ctx.stroke();
     ctx.font = '500 38px Georgia, serif';
     ctx.fillText('Your pieces', 90, 450);
@@ -1435,11 +1553,12 @@ function ReceiptPage() {
       <main className="receipt-stage">
         {receipt ? <section className="receipt-layout section-pad">
           <article className="receipt-paper">
-            <header className="receipt-paper-head"><div><p>Official receipt</p><h2>CHRISÉA Jewellery</h2></div><button type="button" disabled={!receiptImageUrl} onClick={shareReceipt}><Share2 size={15} /> {receiptImageUrl ? 'Share receipt' : 'Preparing…'}</button></header>
-            <div className="receipt-status"><span>✓</span><div><p>Order received</p><h2>Your order is confirmed.</h2><small>A copy of these details can be kept for your records.</small></div></div>
-            <div className="receipt-meta"><div><span>Order number</span><strong>{receipt.id}</strong></div><div><span>Order date</span><strong>{placedDate}</strong></div><div><span>Status</span><strong>Being prepared</strong></div></div>
+            <header className="receipt-paper-head"><div><p>Order summary</p><h2>CHRISÉA Jewellery</h2></div><button type="button" disabled={!receiptImageUrl} onClick={shareReceipt}><Share2 size={15} /> {receiptImageUrl ? 'Share order' : 'Preparing…'}</button></header>
+            <div className="receipt-status"><span>✓</span><div><p>Order received</p><h2>Payment is pending verification.</h2><small>A copy of these details can be kept for your records.</small></div></div>
+            <div className="receipt-meta"><div><span>Order number</span><strong>{receipt.id}</strong></div><div><span>Order date</span><strong>{placedDate}</strong></div><div><span>Payment window</span><strong>{paymentExpired ? 'Expired' : receipt.status === 'pending_verification' ? 'Awaiting verification' : 'Pending payment'}</strong></div></div>
             <section className="receipt-items"><h2>Your pieces</h2>{receipt.items.map((item) => <article key={item.name}><img src={item.image} alt={item.name} /><div><h3>{item.name}</h3><p>{item.detail}</p><span>Quantity: {item.quantity}</span></div><strong>RM {(Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity).toFixed(2)}</strong></article>)}</section>
             <aside className="receipt-summary"><h2>Receipt Summary</h2><div><span>Subtotal</span><strong>RM {receipt.subtotal.toFixed(2)}</strong></div>{receipt.discount > 0 && <div><span>Discount</span><strong>− RM {(receipt.subtotal * receipt.discount).toFixed(2)}</strong></div>}<div><span>Shipping</span><strong>{Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary'}</strong></div><footer><span>Total</span><strong>RM {receipt.total.toFixed(2)}</strong></footer></aside>
+            {(receipt.paymentImage || receipt.paymentInformation) && <aside className="receipt-payment">{paymentExpired ? <><h2>Payment window expired</h2><p>Please contact CHRISÉA with order number {receipt.id} before making a transfer.</p></> : receipt.status === 'pending_verification' ? <><h2>Payment awaiting verification</h2><p>We received your payment notice. Please share your payment record with CHRISÉA and quote order number {receipt.id}. Payment is confirmed only after our team checks the receiving account.</p></> : <><h2>Complete your payment</h2><p>{receipt.paymentInformation}</p>{receipt.paymentImage && <img src={receipt.paymentImage} alt={`${receipt.paymentMethod} payment code`} />}<p>Transfer RM {Number(receipt.total).toFixed(2)} by {new Date(receipt.paymentExpiresAt).toLocaleString('en-MY')}. Include order number {receipt.id} when sharing your payment record.</p>{receipt.paymentNoticeToken && <button type="button" disabled={reportingPayment} onClick={reportReceiptPayment}>{reportingPayment ? 'Reporting payment…' : 'I have paid — notify the team'}</button>}{paymentNoticeError && <p role="alert">{paymentNoticeError}</p>}</>}</aside>}
             <div className="receipt-paper-footer"><p>Thank you for choosing CHRISÉA.</p><div className="receipt-footer-actions"><button type="button" disabled={!receiptImageUrl} onClick={downloadReceipt}><Download size={14} /> Download receipt</button><a href="/#top"><House size={14} /> Back to home page</a></div></div>
             {shareMessage && <div className="receipt-share-message" role="status">{shareMessage}</div>}
           </article>

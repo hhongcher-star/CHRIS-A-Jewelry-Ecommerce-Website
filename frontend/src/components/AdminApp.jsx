@@ -477,7 +477,7 @@ function AddProductPage({ initialProduct = null, categories = [], onCancel, onCr
     setSaving(true);
     setError('');
     try {
-      const stockRecord = { ...(inventory.id ? { id: inventory.id } : {}), sku: inventory.sku, variantName: 'Default', price: form.price, stockQuantity: inventory.stockQuantity, isActive: true };
+      const stockRecord = { ...(inventory.id ? { id: inventory.id, expectedStockQuantity: initialStockRecord.stock_quantity } : {}), sku: inventory.sku, variantName: 'Default', price: form.price, stockQuantity: inventory.stockQuantity, isActive: true };
       const payload = { ...form, sku: inventory.sku, variantName: 'Default', stockQuantity: inventory.stockQuantity, imageUrls: images.map((image) => image.url), variants: [stockRecord] };
       await api(isEditing ? `/admin/products/${initialProduct.id}` : '/admin/products', { method: isEditing ? 'PUT' : 'POST', body: JSON.stringify(payload) });
       await onCreated();
@@ -672,8 +672,8 @@ function Products({ products = [], categories = [], onAdd, onView, onCategoriesC
   </section>;
 }
 
-const orderStatusOptions = ['pending_payment', 'payment_confirmed', 'shipped', 'cancelled'];
-const orderStatusText = { pending_payment: 'Payment Pending', payment_confirmed: 'Payment Confirmed', shipped: 'Shipped', cancelled: 'Cancelled' };
+const orderStatusOptions = ['pending_payment', 'pending_verification', 'payment_confirmed', 'shipped', 'cancelled'];
+const orderStatusText = { pending_payment: 'Payment Pending', pending_verification: 'Awaiting Verification', payment_confirmed: 'Payment Confirmed', shipped: 'Shipped', cancelled: 'Cancelled' };
 
 function OrderReceiptModal({ orderId, onClose }) {
   const [order, setOrder] = useState(null);

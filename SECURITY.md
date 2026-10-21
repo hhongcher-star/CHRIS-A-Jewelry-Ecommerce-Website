@@ -6,6 +6,7 @@
 - Commit only `.env.example`, with empty or non-sensitive sample values.
 - Use separate development and production credentials.
 - Rotate any secret immediately if it is accidentally committed or exposed.
+- Never commit database exports. Keep local backups in the ignored `private-backups/` folder or secure private storage. Removing a dump in a later commit does not erase earlier Git history; coordinate history cleanup and credential rotation if it was shared.
 
 ## Authentication and Authorization
 

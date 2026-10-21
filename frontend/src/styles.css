@@ -2279,3 +2279,15 @@ body,
   .qr-payment-copy { margin-bottom: 14px; font-size: 11px; }
   .qr-payment-code { width: min(268px, 72vw); }
 }
+.receipt-payment {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid rgba(67, 4, 17, .18);
+  background: #fbf8f2;
+  text-align: center;
+}
+.receipt-payment h2 { margin: 0 0 10px; font-family: Georgia, serif; }
+.receipt-payment p { line-height: 1.5; }
+.receipt-payment img { display: block; width: min(100%, 260px); margin: 18px auto; }
+.receipt-payment button { padding: 12px 20px; border: 0; background: #430411; color: white; cursor: pointer; }
+.receipt-payment button:disabled { opacity: .6; cursor: wait; }

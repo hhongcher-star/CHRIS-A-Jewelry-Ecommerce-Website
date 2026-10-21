@@ -33,6 +33,14 @@ Authentication endpoints:
 - `POST /api/auth/logout`
 - `GET /api/auth/me` with an `Authorization: Bearer <token>` header
 
+Checkout creates a pending order before showing payment instructions. It reserves
+stock for two hours. `POST /api/orders/:id/payment-notice` accepts the one-time
+`paymentNoticeToken` returned at checkout and moves the order to
+`pending_verification`; staff must confirm settled funds in the admin order
+ledger. Unpaid orders expire after two hours, and unverified notices expire
+after 48 hours. The API releases their reserved stock during its one-minute
+cleanup cycle. Run the API as a persistent process so this cycle runs.
+
 The short-lived access token is returned in JSON. The rotating refresh token is
 stored in an HTTP-only cookie and only its SHA-256 hash is stored in MySQL.
 

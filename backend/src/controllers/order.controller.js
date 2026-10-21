@@ -23,7 +23,53 @@ const checkoutSchema = z.object({
   })).min(1).max(50),
 }).strict();
 
+export const PAYMENT_HOLD_HOURS = 2;
+export const PAYMENT_REVIEW_HOURS = 48;
+const paymentNoticeHash = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// A pending order reserves stock only for a limited time. Recheck under a row
+// lock so the cleanup cannot race an administrator confirming payment.
+export async function expirePendingOrders() {
+  const [expired] = await pool.query(`
+    SELECT id FROM orders
+    WHERE deleted_at IS NULL AND (
+      (status = 'pending_payment' AND created_at < NOW() - INTERVAL 2 HOUR)
+      OR (status = 'pending_verification' AND updated_at < NOW() - INTERVAL 48 HOUR)
+    )
+    ORDER BY created_at ASC LIMIT 100
+  `);
+  for (const { id } of expired) {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [[order]] = await connection.query(`
+        SELECT order_number, status FROM orders WHERE id = ? AND deleted_at IS NULL
+          AND ((status = 'pending_payment' AND created_at < NOW() - INTERVAL 2 HOUR)
+            OR (status = 'pending_verification' AND updated_at < NOW() - INTERVAL 48 HOUR))
+        FOR UPDATE
+      `, [id]);
+      if (order) {
+        const [items] = await connection.query('SELECT variant_id, quantity FROM order_items WHERE order_id = ? AND variant_id IS NOT NULL', [id]);
+        for (const item of items) {
+          await connection.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE id = ?', [item.quantity, item.variant_id]);
+          await connection.query('INSERT INTO inventory_movements (variant_id, quantity_change, reason, reference) VALUES (?, ?, ?, ?)', [item.variant_id, item.quantity, 'cancellation', order.order_number]);
+        }
+        await connection.query("UPDATE orders SET status = 'cancelled' WHERE id = ?", [id]);
+        await connection.query('INSERT INTO order_status_history (order_id, from_status, to_status, note) VALUES (?, ?, ?, ?)', [id, order.status, 'cancelled', 'Payment or verification window expired; reserved stock released.']);
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+  return expired.length;
+}
+
 export async function createOrder(req, res) {
+  await expirePendingOrders();
   await ensurePaymentSchema();
   await ensurePromotionSchema();
   const parsed = checkoutSchema.safeParse(req.body);
@@ -110,15 +156,16 @@ export async function createOrder(req, res) {
     const shippingTotal = promotion?.free_shipping || subtotal - discountTotal >= 200 ? 0 : configuredShippingPrice;
     const grandTotal = subtotal - discountTotal + shippingTotal;
 
-    const orderNumber = `CHR-${Date.now().toString().slice(-10)}-${crypto.randomInt(10, 100)}`;
+    const orderNumber = `CHR-${Date.now().toString().slice(-10)}-${crypto.randomInt(1000, 10000)}`;
+    const paymentNoticeToken = crypto.randomBytes(32).toString('hex');
     const [orderResult] = await connection.query(`
       INSERT INTO orders (
-        order_number, user_id, promotion_id, status, payment_method, currency, subtotal, discount_total,
+        order_number, user_id, promotion_id, status, payment_method, payment_notice_token_hash, currency, subtotal, discount_total,
         shipping_total, grand_total, recipient_name, recipient_phone, shipping_address_line_1,
         shipping_address_line_2, shipping_city, shipping_state, shipping_postcode, shipping_country_code
-      ) VALUES (?, ?, ?, 'pending_payment', ?, 'MYR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'MY')
+      ) VALUES (?, ?, ?, 'pending_payment', ?, ?, 'MYR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'MY')
     `, [
-      orderNumber, userId, promotion?.id || null, checkout.paymentMethod, subtotal, discountTotal, shippingTotal, grandTotal,
+      orderNumber, userId, promotion?.id || null, checkout.paymentMethod, paymentNoticeHash(paymentNoticeToken), subtotal, discountTotal, shippingTotal, grandTotal,
       checkout.customer.fullName, checkout.customer.phone, checkout.customer.addressLine1,
       checkout.customer.addressLine2 || null, checkout.customer.city, checkout.customer.state, checkout.customer.postcode,
     ]);
@@ -149,6 +196,9 @@ export async function createOrder(req, res) {
           id: orderResult.insertId,
           orderNumber,
           status: 'pending_payment',
+          paymentNoticeToken,
+          paymentWindowHours: PAYMENT_HOLD_HOURS,
+          paymentExpiresAt: new Date(Date.now() + PAYMENT_HOLD_HOURS * 60 * 60 * 1000).toISOString(),
           paymentMethod: checkout.paymentMethod,
           subtotal,
           discount: discountTotal,
@@ -166,6 +216,41 @@ export async function createOrder(req, res) {
         },
       },
     });
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function reportPayment(req, res) {
+  await ensurePaymentSchema();
+  const orderId = Number(req.params.id);
+  const parsed = z.object({ paymentNoticeToken: z.string().regex(/^[a-f0-9]{64}$/) }).safeParse(req.body);
+  if (!Number.isSafeInteger(orderId) || orderId < 1 || !parsed.success) {
+    throw new AppError(400, 'INVALID_PAYMENT_NOTICE', 'The payment notice is invalid.');
+  }
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [[order]] = await connection.query(`
+      SELECT status, deleted_at, UNIX_TIMESTAMP(updated_at) AS reported_at FROM orders
+      WHERE id = ? AND payment_notice_token_hash = ? FOR UPDATE
+    `, [orderId, paymentNoticeHash(parsed.data.paymentNoticeToken)]);
+    if (!order || order.deleted_at) throw new AppError(404, 'ORDER_NOT_FOUND', 'This order could not be found.');
+    if (order.status === 'pending_verification') {
+      await connection.commit();
+      return res.json({ success: true, data: { status: 'pending_verification', reviewExpiresAt: new Date(Number(order.reported_at) * 1000 + PAYMENT_REVIEW_HOURS * 60 * 60 * 1000).toISOString() } });
+    }
+    if (order.status !== 'pending_payment') throw new AppError(409, 'PAYMENT_WINDOW_CLOSED', 'Please contact CHRISÉA before making a transfer for this order.');
+    const [[fresh]] = await connection.query('SELECT created_at >= NOW() - INTERVAL 2 HOUR AS within_window FROM orders WHERE id = ?', [orderId]);
+    if (!fresh.within_window) throw new AppError(409, 'PAYMENT_WINDOW_CLOSED', 'The payment window has expired. Please contact CHRISÉA.');
+    await connection.query("UPDATE orders SET status = 'pending_verification' WHERE id = ?", [orderId]);
+    await connection.query('INSERT INTO order_status_history (order_id, from_status, to_status, note) VALUES (?, ?, ?, ?)', [orderId, 'pending_payment', 'pending_verification', 'Customer reported a manual transfer; verify settled funds.']);
+    const [[reported]] = await connection.query('SELECT UNIX_TIMESTAMP(updated_at) AS reported_at FROM orders WHERE id = ?', [orderId]);
+    await connection.commit();
+    return res.json({ success: true, data: { status: 'pending_verification', reviewExpiresAt: new Date(Number(reported.reported_at) * 1000 + PAYMENT_REVIEW_HOURS * 60 * 60 * 1000).toISOString() } });
   } catch (error) {
     await connection.rollback();
     throw error;

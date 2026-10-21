@@ -68,6 +68,12 @@ export function ensurePaymentSchema() {
         LIMIT 1
       `);
       if (columns[0]?.dataType === 'enum') await pool.query('ALTER TABLE orders MODIFY payment_method VARCHAR(120) NOT NULL');
+      const [noticeColumns] = await pool.query(`
+        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'payment_notice_token_hash'
+        LIMIT 1
+      `);
+      if (!noticeColumns.length) await pool.query('ALTER TABLE orders ADD COLUMN payment_notice_token_hash CHAR(64) NULL UNIQUE AFTER payment_method');
     })().catch((error) => {
       paymentSchemaPromise = undefined;
       throw error;

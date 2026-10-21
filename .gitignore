@@ -66,6 +66,10 @@ Desktop.ini
 .serverless/
 
 # Database dumps and local databases
+private-backups/
+*database-backup*.sql
+*database-dump*.sql
+restore-original-database.sql
 *.sql.gz
 *.sqlite
 *.sqlite3
