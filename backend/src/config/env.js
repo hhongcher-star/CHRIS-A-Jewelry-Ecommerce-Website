@@ -16,6 +16,8 @@ const schema = z.object({
   DB_USER: z.string().default(''),
   DB_PASSWORD: z.string().default(''),
   DB_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(50).default(10),
+  DB_SSL: booleanString,
+  DB_SSL_CA_BASE64: z.string().trim().default(''),
   JWT_SECRET: z.string().default(''),
   JWT_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
@@ -46,6 +48,9 @@ if (result.data.NODE_ENV === 'production') {
   }
   if (result.data.JWT_SECRET.length < 32) {
     throw new Error('JWT_SECRET must contain at least 32 characters in production');
+  }
+  if (!result.data.DB_SSL) {
+    throw new Error('DB_SSL must be true in production');
   }
 }
 

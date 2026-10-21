@@ -4,6 +4,7 @@ import { authenticate, requireRole } from '../middleware/authenticate.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { adminContent, publishContent, saveContentDraft } from '../controllers/content.controller.js';
 import { adminReviews, deleteReview, moderateReview } from '../controllers/review.controller.js';
+import { requireCsrf } from '../middleware/csrf.js';
 
 export const adminRouter = Router();
 
@@ -11,7 +12,7 @@ adminRouter.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   next();
 });
-adminRouter.use(authenticate, requireRole('admin'));
+adminRouter.use(authenticate, requireRole('admin'), requireCsrf);
 adminRouter.get('/dashboard', asyncHandler(dashboard));
 adminRouter.get('/categories', asyncHandler(listCategories));
 adminRouter.post('/categories', asyncHandler(createCategory));

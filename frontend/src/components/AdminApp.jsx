@@ -8,32 +8,17 @@ import {
 import './admin.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const TOKEN_KEY = 'chrisea-admin-access';
 const REMEMBER_KEY = 'chrisea-admin-remember';
-let accessToken = null;
+let csrfToken = null;
 
-function storeToken(token, persistent = window.localStorage.getItem(REMEMBER_KEY) === 'true') {
-  accessToken = token;
-  if (persistent) {
-    window.localStorage.setItem(TOKEN_KEY, token);
-    window.localStorage.setItem(REMEMBER_KEY, 'true');
-    window.sessionStorage.removeItem(TOKEN_KEY);
-  } else {
-    window.sessionStorage.setItem(TOKEN_KEY, token);
-    window.localStorage.removeItem(TOKEN_KEY);
-    window.localStorage.removeItem(REMEMBER_KEY);
-  }
+function storeSecurityContext(token, persistent = window.localStorage.getItem(REMEMBER_KEY) === 'true') {
+  csrfToken = token;
+  if (persistent) window.localStorage.setItem(REMEMBER_KEY, 'true');
+  else window.localStorage.removeItem(REMEMBER_KEY);
 }
 
-function readToken() {
-  accessToken ||= window.sessionStorage.getItem(TOKEN_KEY) || window.localStorage.getItem(TOKEN_KEY);
-  return accessToken;
-}
-
-function clearToken() {
-  accessToken = null;
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.sessionStorage.removeItem(TOKEN_KEY);
+function clearSecurityContext() {
+  csrfToken = null;
   window.localStorage.removeItem(REMEMBER_KEY);
 }
 
@@ -70,27 +55,20 @@ async function refreshAuthentication() {
     signal: AbortSignal.timeout(12000)
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok || data?.data?.user?.role !== 'admin' || !data?.data?.accessToken) {
-    clearToken();
+  if (!response.ok || data?.data?.user?.role !== 'admin' || !data?.data?.csrfToken) {
+    clearSecurityContext();
     throw new Error('Your administrator session has expired.');
   }
-  storeToken(data.data.accessToken);
+  storeSecurityContext(data.data.csrfToken);
   return data.data;
 }
 
 async function restoreAuthentication() {
-  if (!readToken()) return refreshAuthentication();
-  try {
-    return { user: (await api('/auth/me', { retryAuth: false })).user, accessToken };
-  } catch (error) {
-    if (error.status !== 401) throw error;
-    return refreshAuthentication();
-  }
+  return refreshAuthentication();
 }
 
 async function api(path, options = {}) {
   const { retryAuth = true, ...requestOptions } = options;
-  const token = readToken();
   const canRetry = !requestOptions.method || requestOptions.method === 'GET';
   const attempts = canRetry ? 3 : 1;
   let response;
@@ -103,7 +81,7 @@ async function api(path, options = {}) {
         signal: requestOptions.signal || AbortSignal.timeout(12000),
         headers: {
           ...(requestOptions.body ? { 'Content-Type': 'application/json' } : {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(!['GET', 'HEAD'].includes(requestOptions.method || 'GET') && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
           ...requestOptions.headers
         }
       });
@@ -129,6 +107,15 @@ async function api(path, options = {}) {
     throw error;
   }
   return data?.data;
+}
+
+async function loadAllAdminRecords(path, key) {
+  const separator = path.includes('?') ? '&' : '?';
+  const first = await api(`${path}${separator}page=1&pageSize=100`);
+  const pages = Number(first.pagination?.pages || 1);
+  if (pages <= 1) return first[key] || [];
+  const remaining = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => api(`${path}${separator}page=${index + 2}&pageSize=100`)));
+  return [first, ...remaining].flatMap((result) => result[key] || []);
 }
 
 const readBlobAsDataUrl = (blob) => new Promise((resolve, reject) => {
@@ -188,13 +175,13 @@ function AdminLogin({ onLogin }) {
       const result = await api('/auth/admin/login', {
         method: 'POST',
         retryAuth: false,
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, rememberMe })
       });
       if (result.user.role !== 'admin') {
         await api('/auth/logout', { method: 'POST' });
         throw new Error('This account does not have administrator access.');
       }
-      storeToken(result.accessToken, rememberMe);
+      storeSecurityContext(result.csrfToken, rememberMe);
       onLogin(result.user);
     } catch (loginError) {
       setError(loginError.message);
@@ -672,8 +659,8 @@ function Products({ products = [], categories = [], onAdd, onView, onCategoriesC
   </section>;
 }
 
-const orderStatusOptions = ['pending_payment', 'pending_verification', 'payment_confirmed', 'shipped', 'cancelled'];
-const orderStatusText = { pending_payment: 'Payment Pending', pending_verification: 'Awaiting Verification', payment_confirmed: 'Payment Confirmed', shipped: 'Shipped', cancelled: 'Cancelled' };
+const orderStatusOptions = ['pending_payment', 'pending_verification', 'payment_exception', 'payment_confirmed', 'shipped', 'cancelled'];
+const orderStatusText = { pending_payment: 'Payment Pending', pending_verification: 'Awaiting Verification', payment_exception: 'Manual Payment Review', payment_confirmed: 'Payment Confirmed', shipped: 'Shipped', cancelled: 'Cancelled' };
 
 function OrderReceiptModal({ orderId, onClose }) {
   const [order, setOrder] = useState(null);
@@ -967,7 +954,7 @@ function WebsiteContent({ onStartGuide }) {
     }).catch((error) => setStatus(error.message));
   }, [page]);
   useEffect(() => {
-    Promise.all([api('/admin/products'), api('/admin/categories')]).then(([productResult, categoryResult]) => setCatalogue({ products: productResult.products || [], categories: categoryResult.categories || [] })).catch(() => {});
+    Promise.all([loadAllAdminRecords('/admin/products', 'products'), api('/admin/categories')]).then(([products, categoryResult]) => setCatalogue({ products, categories: categoryResult.categories || [] })).catch(() => {});
   }, []);
   useEffect(() => {
     if (!catalogue.products.length || !['home', 'shop', 'cart'].includes(page)) return;
@@ -1224,14 +1211,14 @@ export default function AdminApp() {
       let nextData = null;
       if (currentPage === 'dashboard') nextData = await api('/admin/dashboard');
       if (currentPage === 'products') {
-        const [productsResult, categoriesResult] = await Promise.all([api('/admin/products'), api('/admin/categories')]);
-        nextData = { products: productsResult.products, categories: categoriesResult.categories };
+        const [products, categoriesResult] = await Promise.all([loadAllAdminRecords('/admin/products', 'products'), api('/admin/categories')]);
+        nextData = { products, categories: categoriesResult.categories };
       }
       if (currentPage === 'product-detail') {
         const [productResult, categoriesResult] = await Promise.all([api(`/admin/products/${currentProductId}`), api('/admin/categories')]);
         nextData = { product: productResult.product, categories: categoriesResult.categories };
       }
-      if (currentPage === 'orders') nextData = { orders: (await api('/admin/orders')).orders };
+      if (currentPage === 'orders') nextData = { orders: await loadAllAdminRecords('/admin/orders', 'orders') };
       if (currentPage === 'reviews') nextData = { reviews: (await api('/admin/reviews')).reviews };
       if (currentPage === 'promotions') nextData = { promotions: (await api('/admin/promotions')).promotions };
       if (currentPage === 'content') nextData = { ready: true };
@@ -1248,7 +1235,7 @@ export default function AdminApp() {
   useEffect(() => {
     restoreAuthentication()
       .then(({ user: account }) => setUser(account))
-      .catch(() => clearToken())
+      .catch(() => clearSecurityContext())
       .finally(() => setCheckingSession(false));
   }, []);
   useEffect(() => { if (user) load(page, selectedProductId); }, [user, page, selectedProductId]);
@@ -1266,7 +1253,7 @@ export default function AdminApp() {
 
   const logout = async () => {
     try { await api('/auth/logout', { method: 'POST' }); } catch { /* Clear local access regardless. */ }
-    clearToken();
+    clearSecurityContext();
     setUser(null);
   };
 

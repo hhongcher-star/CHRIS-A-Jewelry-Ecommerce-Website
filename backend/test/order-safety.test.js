@@ -52,6 +52,26 @@ test('expiry skips an order confirmed after the scan', async () => {
   }
 });
 
+test('reported payment moves to manual exception without releasing inventory', async () => {
+  const calls = [];
+  const connection = {
+    beginTransaction: async () => {}, commit: async () => calls.push('commit'), rollback: async () => {}, release: () => {},
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      if (sql.includes('SELECT order_number, status')) return [[{ order_number: 'CHR-PAID', status: 'pending_verification' }]];
+      return [{ affectedRows: 1 }];
+    }
+  };
+  mock.method(pool, 'query', async () => [[{ id: 22 }]]);
+  mock.method(pool, 'getConnection', async () => connection);
+  try {
+    assert.equal(await expirePendingOrders(), 1);
+    assert.equal(calls.filter((call) => call.sql?.includes('stock_quantity')).length, 0);
+    assert.ok(calls.some((call) => call.sql?.includes("status = 'payment_exception'")));
+    assert.ok(calls.includes('commit'));
+  } finally { mock.restoreAll(); }
+});
+
 test('changing a recycled order cannot return inventory a second time', async () => {
   const calls = [];
   const connection = {

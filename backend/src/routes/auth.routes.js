@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { adminLogin, login, logout, me, refresh, register } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/authenticate.js';
+import { requireCsrf } from '../middleware/csrf.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { validate } from '../utils/validation.js';
 
@@ -38,6 +39,7 @@ const registerSchema = z.object({
   phone: z.string().trim().min(7).max(30).optional().or(z.literal(''))
 }).strict();
 const loginSchema = z.object({ email, password: z.string().min(1).max(128) }).strict();
+const adminLoginSchema = loginSchema.extend({ rememberMe: z.boolean().optional().default(false) });
 
 function validateBody(schema) {
   return function validationMiddleware(req, _res, next) {
@@ -52,7 +54,7 @@ function validateBody(schema) {
 
 authRouter.post('/register', authLimiter, validateBody(registerSchema), asyncHandler(register));
 authRouter.post('/login', authLimiter, validateBody(loginSchema), asyncHandler(login));
-authRouter.post('/admin/login', adminLoginLimiter, validateBody(loginSchema), asyncHandler(adminLogin));
+authRouter.post('/admin/login', adminLoginLimiter, validateBody(adminLoginSchema), asyncHandler(adminLogin));
 authRouter.post('/refresh', authLimiter, asyncHandler(refresh));
-authRouter.post('/logout', asyncHandler(logout));
+authRouter.post('/logout', authenticate, requireCsrf, asyncHandler(logout));
 authRouter.get('/me', authenticate, me);

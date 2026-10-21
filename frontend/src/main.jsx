@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import HeroSlider from './components/HeroSlider';
 import './styles.css';
+import { checkedCartQuantity, clampCartToCatalogue, parseCart } from './cart-state.js';
 
 const AdminApp = React.lazy(() => import('./components/AdminApp'));
 
@@ -334,12 +335,18 @@ const getProductStock = (product, inventory = {}) => {
 };
 
 const CART_KEY = 'chrisea-cart';
+window.localStorage.removeItem('chrisea-latest-receipt');
 const readCart = () => {
-  try { return JSON.parse(window.localStorage.getItem(CART_KEY) || '[]'); } catch { return []; }
+  const raw = window.localStorage.getItem(CART_KEY);
+  const safeItems = parseCart(raw);
+  const canonical = JSON.stringify(safeItems);
+  if (raw !== canonical) window.localStorage.setItem(CART_KEY, canonical);
+  return safeItems;
 };
 const writeCart = (items) => {
-  window.localStorage.setItem(CART_KEY, JSON.stringify(items));
-  window.dispatchEvent(new CustomEvent('chrisea-cart-change', { detail: items }));
+  const safeItems = parseCart(items);
+  window.localStorage.setItem(CART_KEY, JSON.stringify(safeItems));
+  window.dispatchEvent(new CustomEvent('chrisea-cart-change', { detail: safeItems }));
 };
 
 async function notifyPayment(receipt) {
@@ -368,12 +375,13 @@ const addCartItem = async (product, quantity = 1) => {
   const items = readCart();
   const cartKey = `${slug}:${selectedVariantId || ''}`;
   const existing = items.find((item) => (item.key || `${item.slug || item.name}:`) === cartKey);
-  const existingQuantity = Math.max(0, Math.floor(Number(existing?.quantity) || 0));
-  if (existingQuantity + requestedQuantity > stock) {
+  const quantityCheck = checkedCartQuantity(existing?.quantity, requestedQuantity, stock);
+  const existingQuantity = quantityCheck.existing;
+  if (!quantityCheck.ok) {
     throw new Error(stock === 0 ? 'This item is sold out.' : `Only ${stock} item${stock === 1 ? '' : 's'} available. You already have ${existingQuantity} in your cart.`);
   }
   const cartItem = { key: cartKey, slug, name: liveProduct.name || product.name, variantId: selectedVariantId, quantity: requestedQuantity };
-  const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: existingQuantity + requestedQuantity } : item) : [...items, cartItem];
+  const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: quantityCheck.quantity } : item) : [...items, cartItem];
   writeCart(next);
   return next;
 };
@@ -1158,14 +1166,8 @@ function CartPage() {
   useEffect(() => {
     if (!catalogueProducts.length) return;
     let changed = false;
-    const next = cart.map((item) => {
-      const product = catalogueProducts.find((candidate) => candidate.slug === item.slug || candidate.name === item.name);
-      if (!product || Number(product.stock) < 1) return item;
-      const quantity = Math.max(1, Math.min(Math.floor(Number(item.quantity) || 1), Math.floor(Number(product.stock))));
-      if (quantity === item.quantity) return item;
-      changed = true;
-      return { ...item, quantity };
-    });
+    const next = clampCartToCatalogue(cart, catalogueProducts);
+    changed = JSON.stringify(next) !== JSON.stringify(cart);
     if (changed) {
       setCart(next);
       writeCart(next);
@@ -1269,8 +1271,8 @@ function CartPage() {
         const cartItem = cartItems.find((item) => Number(item.variantId) === Number(line.variantId));
         return { ...cartItem, ...line, image: cartItem?.image, detail: cartItem?.detail };
       });
-      const receipt = { id: order.orderNumber, orderId: order.id, paymentNoticeToken: order.paymentNoticeToken, placedAt: new Date().toISOString(), items: receiptItems, subtotal: order.subtotal, discount: order.discount / Math.max(order.subtotal, 1), shipping: order.shipping, total: order.total, customer: order.customer, status: order.status, paymentMethod: selectedPayment.name, paymentImage: selectedPayment.image, paymentInformation: selectedPayment.information, paymentWindowHours: order.paymentWindowHours, paymentExpiresAt: order.paymentExpiresAt };
-      window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(receipt));
+      const receipt = { id: order.orderNumber, orderId: order.id, paymentNoticeToken: order.paymentNoticeToken, placedAt: new Date().toISOString(), items: receiptItems, subtotal: order.subtotal, discount: order.discount / Math.max(order.subtotal, 1), shipping: order.shipping, total: order.total, status: order.status, paymentMethod: selectedPayment.name, paymentImage: selectedPayment.image, paymentInformation: selectedPayment.information, paymentWindowHours: order.paymentWindowHours, paymentExpiresAt: order.paymentExpiresAt };
+      window.sessionStorage.setItem('chrisea-latest-receipt', JSON.stringify(receipt));
       catalogueProductsCache = null;
       writeCart([]);
       setPlacedOrder(receipt);
@@ -1287,7 +1289,7 @@ function CartPage() {
     setPaymentNoticeError('');
     try {
       const updated = await notifyPayment(placedOrder);
-      window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
+      window.sessionStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
       proceedToReceipt();
     } catch (error) {
       setPaymentNoticeError(error.message);
@@ -1364,7 +1366,7 @@ function CartPage() {
 
 function ReceiptPage() {
   const [receipt, setReceipt] = useState(() => {
-    try { return JSON.parse(window.localStorage.getItem('chrisea-latest-receipt') || 'null'); } catch { return null; }
+    try { return JSON.parse(window.sessionStorage.getItem('chrisea-latest-receipt') || 'null'); } catch { return null; }
   });
   const [shareMessage, setShareMessage] = useState('');
   const [showSharePrompt, setShowSharePrompt] = useState(Boolean(receipt));
@@ -1380,7 +1382,7 @@ function ReceiptPage() {
     setPaymentNoticeError('');
     try {
       const updated = await notifyPayment(receipt);
-      window.localStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
+      window.sessionStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
       setReceipt(updated);
     } catch (error) {
       setPaymentNoticeError(error.message);

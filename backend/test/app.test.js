@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { closeDatabase } from '../src/config/database.js';
+import { requireCsrf } from '../src/middleware/csrf.js';
 
 after(async () => {
   await closeDatabase();
@@ -49,4 +50,13 @@ test('GET /api/auth/me requires authentication', async () => {
 
   assert.equal(response.status, 401);
   assert.equal(response.body.error.code, 'AUTHENTICATION_REQUIRED');
+});
+
+test('CSRF middleware rejects missing and mismatched tokens', () => {
+  const invoke = (cookie, header) => new Promise((resolve) => requireCsrf({ method: 'POST', cookies: cookie ? { chrisea_csrf: cookie } : {}, get: () => header }, {}, resolve));
+  return Promise.all([
+    invoke(null, null).then((error) => assert.equal(error.code, 'INVALID_CSRF_TOKEN')),
+    invoke('one', 'two').then((error) => assert.equal(error.code, 'INVALID_CSRF_TOKEN')),
+    invoke('same', 'same').then((error) => assert.equal(error, undefined)),
+  ]);
 });

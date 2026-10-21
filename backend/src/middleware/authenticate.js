@@ -5,7 +5,7 @@ import { asyncHandler } from '../utils/async-handler.js';
 
 export const authenticate = asyncHandler(async (req, _res, next) => {
   const authorization = req.get('authorization');
-  const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
+  const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : req.cookies?.chrisea_access;
   if (!token) throw new AppError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required.');
 
   const payload = verifyAccessToken(token);

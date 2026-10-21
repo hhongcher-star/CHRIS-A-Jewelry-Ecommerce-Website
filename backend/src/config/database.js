@@ -13,7 +13,11 @@ export const pool = mysql.createPool({
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   decimalNumbers: false,
-  timezone: 'Z'
+  timezone: 'Z',
+  ssl: env.DB_SSL ? {
+    rejectUnauthorized: true,
+    ...(env.DB_SSL_CA_BASE64 ? { ca: Buffer.from(env.DB_SSL_CA_BASE64, 'base64').toString('utf8') } : {})
+  } : undefined
 });
 
 export async function checkDatabaseConnection() {
@@ -68,6 +72,13 @@ export function ensurePaymentSchema() {
         LIMIT 1
       `);
       if (columns[0]?.dataType === 'enum') await pool.query('ALTER TABLE orders MODIFY payment_method VARCHAR(120) NOT NULL');
+      const [statusColumns] = await pool.query(`
+        SELECT COLUMN_TYPE AS columnType FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'status' LIMIT 1
+      `);
+      if (statusColumns.length && !String(statusColumns[0].columnType).includes("'payment_exception'")) {
+        await pool.query("ALTER TABLE orders MODIFY status ENUM('pending_payment','pending_verification','payment_exception','payment_confirmed','payment_rejected','processing','shipped','completed','cancelled') NOT NULL DEFAULT 'pending_payment'");
+      }
       const [noticeColumns] = await pool.query(`
         SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders' AND COLUMN_NAME = 'payment_notice_token_hash'

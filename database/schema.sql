@@ -172,6 +172,7 @@ CREATE TABLE orders (
   status ENUM(
     'pending_payment',
     'pending_verification',
+    'payment_exception',
     'payment_confirmed',
     'payment_rejected',
     'processing',

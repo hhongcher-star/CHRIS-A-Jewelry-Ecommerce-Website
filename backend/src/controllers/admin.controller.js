@@ -47,7 +47,7 @@ const categorySchema = z.object({
 });
 
 const orderStatusSchema = z.object({
-  status: z.enum(['pending_payment', 'pending_verification', 'payment_confirmed', 'shipped', 'cancelled'])
+  status: z.enum(['pending_payment', 'pending_verification', 'payment_exception', 'payment_confirmed', 'shipped', 'cancelled'])
 });
 
 const stockAdjustmentSchema = z.object({ delta: z.coerce.number().int().min(-1).max(1).refine((value) => value !== 0) });
@@ -64,6 +64,12 @@ const promotionSchema = z.object({
   usageLimit: z.preprocess((value) => value === '' || value === null || value === undefined ? null : value, z.coerce.number().int().positive().max(1000000).nullable()).default(null),
   isActive: z.boolean().default(true)
 });
+
+function pagination(req) {
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number.parseInt(req.query.pageSize, 10) || 25));
+  return { page, pageSize, offset: (page - 1) * pageSize };
+}
 
 async function adjustOrderInventory(connection, orderId, direction, reason, reference, userId) {
   const [items] = await connection.query('SELECT variant_id, quantity FROM order_items WHERE order_id = ? AND variant_id IS NOT NULL', [orderId]);
@@ -215,8 +221,20 @@ export async function dashboard(_req, res) {
   });
 }
 
-export async function listProducts(_req, res) {
-  const [rows] = await pool.query(`
+export async function listProducts(req, res) {
+  const { page, pageSize, offset } = pagination(req);
+  const query = String(req.query.q || '').trim().slice(0, 100);
+  const category = String(req.query.category || '').trim().slice(0, 100);
+  const status = ['draft', 'active'].includes(req.query.status) ? req.query.status : '';
+  const conditions = ["p.status <> 'archived'"];
+  const params = [];
+  if (query) { conditions.push('(p.name LIKE ? OR p.slug LIKE ?)'); params.push(`%${query}%`, `%${query}%`); }
+  if (category) { conditions.push('c.name = ?'); params.push(category); }
+  if (status) { conditions.push('p.status = ?'); params.push(status); }
+  const where = conditions.join(' AND ');
+  const [[countRow], [rows]] = await Promise.all([
+    pool.query(`SELECT COUNT(*) AS total FROM products p JOIN categories c ON c.id = p.category_id WHERE ${where}`, params),
+    pool.query(`
     SELECT
       p.id, p.name, p.slug, p.base_price, p.discount_percent, p.status, p.featured,
       c.name AS category,
@@ -226,11 +244,14 @@ export async function listProducts(_req, res) {
     FROM products p
     JOIN categories c ON c.id = p.category_id
     LEFT JOIN product_variants pv ON pv.product_id = p.id
-    WHERE p.status <> 'archived'
+    WHERE ${where}
     GROUP BY p.id, c.name
     ORDER BY p.created_at DESC, p.id DESC
-  `);
-  res.json({ success: true, data: { products: rows } });
+    LIMIT ? OFFSET ?
+  `, [...params, pageSize, offset])
+  ]);
+  const total = Number(countRow[0]?.total || 0);
+  res.json({ success: true, data: { products: rows, pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) } } });
 }
 
 export async function getProduct(req, res) {
@@ -389,8 +410,18 @@ export async function uploadProductImage(req, res) {
   res.status(201).json({ success: true, data: uploaded });
 }
 
-export async function listOrders(_req, res) {
-  const [rows] = await pool.query(`
+export async function listOrders(req, res) {
+  const { page, pageSize, offset } = pagination(req);
+  const query = String(req.query.q || '').trim().slice(0, 100);
+  const status = orderStatusSchema.shape.status.safeParse(req.query.status).success ? req.query.status : '';
+  const conditions = ['o.deleted_at IS NULL'];
+  const params = [];
+  if (query) { conditions.push('(o.order_number LIKE ? OR u.full_name LIKE ? OR u.email LIKE ? OR o.recipient_phone LIKE ?)'); params.push(...Array(4).fill(`%${query}%`)); }
+  if (status) { conditions.push('o.status = ?'); params.push(status); }
+  const where = conditions.join(' AND ');
+  const [[countRow], [rows]] = await Promise.all([
+    pool.query(`SELECT COUNT(*) AS total FROM orders o JOIN users u ON u.id = o.user_id WHERE ${where}`, params),
+    pool.query(`
     SELECT o.id, o.order_number, o.status, o.grand_total, o.currency,
       o.payment_method, o.created_at, o.recipient_phone, u.full_name,
       CASE WHEN u.email LIKE '%@customer.chrisea.local' THEN o.recipient_phone ELSE u.email END AS email,
@@ -398,12 +429,14 @@ export async function listOrders(_req, res) {
     FROM orders o
     JOIN users u ON u.id = o.user_id
     LEFT JOIN order_items oi ON oi.order_id = o.id
-    WHERE o.deleted_at IS NULL
+    WHERE ${where}
     GROUP BY o.id, o.recipient_phone, u.full_name, u.email
     ORDER BY o.created_at DESC
-    LIMIT 100
-  `);
-  res.json({ success: true, data: { orders: rows } });
+    LIMIT ? OFFSET ?
+  `, [...params, pageSize, offset])
+  ]);
+  const total = Number(countRow[0]?.total || 0);
+  res.json({ success: true, data: { orders: rows, pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) } } });
 }
 
 export async function getOrder(req, res) {

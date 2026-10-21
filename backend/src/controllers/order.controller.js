@@ -49,13 +49,18 @@ export async function expirePendingOrders() {
         FOR UPDATE
       `, [id]);
       if (order) {
-        const [items] = await connection.query('SELECT variant_id, quantity FROM order_items WHERE order_id = ? AND variant_id IS NOT NULL', [id]);
-        for (const item of items) {
-          await connection.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE id = ?', [item.quantity, item.variant_id]);
-          await connection.query('INSERT INTO inventory_movements (variant_id, quantity_change, reason, reference) VALUES (?, ?, ?, ?)', [item.variant_id, item.quantity, 'cancellation', order.order_number]);
+        if (order.status === 'pending_payment') {
+          const [items] = await connection.query('SELECT variant_id, quantity FROM order_items WHERE order_id = ? AND variant_id IS NOT NULL', [id]);
+          for (const item of items) {
+            await connection.query('UPDATE product_variants SET stock_quantity = stock_quantity + ? WHERE id = ?', [item.quantity, item.variant_id]);
+            await connection.query('INSERT INTO inventory_movements (variant_id, quantity_change, reason, reference) VALUES (?, ?, ?, ?)', [item.variant_id, item.quantity, 'cancellation', order.order_number]);
+          }
+          await connection.query("UPDATE orders SET status = 'cancelled' WHERE id = ?", [id]);
+          await connection.query('INSERT INTO order_status_history (order_id, from_status, to_status, note) VALUES (?, ?, ?, ?)', [id, order.status, 'cancelled', 'Payment window expired; reserved stock released.']);
+        } else {
+          await connection.query("UPDATE orders SET status = 'payment_exception' WHERE id = ?", [id]);
+          await connection.query('INSERT INTO order_status_history (order_id, from_status, to_status, note) VALUES (?, ?, ?, ?)', [id, order.status, 'payment_exception', 'Payment was reported but not reviewed within 48 hours; manual investigation required. Stock remains reserved.']);
         }
-        await connection.query("UPDATE orders SET status = 'cancelled' WHERE id = ?", [id]);
-        await connection.query('INSERT INTO order_status_history (order_id, from_status, to_status, note) VALUES (?, ?, ?, ?)', [id, order.status, 'cancelled', 'Payment or verification window expired; reserved stock released.']);
       }
       await connection.commit();
     } catch (error) {
