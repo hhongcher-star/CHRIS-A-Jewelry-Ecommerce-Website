@@ -49,9 +49,6 @@ if (result.data.NODE_ENV === 'production') {
   if (result.data.JWT_SECRET.length < 32) {
     throw new Error('JWT_SECRET must contain at least 32 characters in production');
   }
-  if (!result.data.DB_SSL) {
-    throw new Error('DB_SSL must be true in production');
-  }
 }
 
 export const env = Object.freeze(result.data);
