@@ -75,7 +75,11 @@ async function performRefreshAuthentication() {
 
 function refreshAuthentication() {
   if (!refreshPromise) {
-    refreshPromise = performRefreshAuthentication().finally(() => { refreshPromise = null; });
+    const refresh = () => performRefreshAuthentication();
+    // Share the refresh lock between tabs: the refresh cookie rotates after use.
+    refreshPromise = (globalThis.navigator?.locks?.request
+      ? globalThis.navigator.locks.request('chrisea-admin-auth-refresh', refresh)
+      : refresh()).finally(() => { refreshPromise = null; });
   }
   return refreshPromise;
 }
