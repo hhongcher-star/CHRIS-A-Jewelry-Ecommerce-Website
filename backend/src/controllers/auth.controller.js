@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { AppError } from '../errors/app-error.js';
-import { loginAdminUser, loginUser, refreshSession, registerUser, revokeSession } from '../services/auth.service.js';
+import { loginAdminUser, loginUser, refreshSession, registerUser, revokeSession, updateAdminCredentials } from '../services/auth.service.js';
 import { durationToMilliseconds } from '../utils/duration.js';
 import crypto from 'node:crypto';
 import { csrfCookieName } from '../middleware/csrf.js';
@@ -55,6 +55,16 @@ export async function logout(req, res) {
   res.status(204).send();
 }
 
+export async function updateCredentials(req, res) {
+  await updateAdminCredentials(req.user.id, req.validatedBody);
+  res.clearCookie(cookieName, { ...baseCookieOptions, path: '/api/auth' });
+  res.clearCookie(accessCookieName, { ...baseCookieOptions, path: '/api' });
+  res.clearCookie(csrfCookieName, { ...baseCookieOptions, path: '/api' });
+  res.clearCookie(rememberCookieName, { ...baseCookieOptions, path: '/api/auth' });
+  res.status(204).send();
+}
+
 export function me(req, res) {
   res.json({ success: true, data: { user: req.user } });
 }
+
