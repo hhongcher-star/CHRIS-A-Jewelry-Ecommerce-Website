@@ -1468,3 +1468,10 @@
 .admin-credentials-body .admin-password-field button svg { width: 20px; height: 20px; }
 
 .admin-credential-password { display: grid; gap: 6px; }
+
+
+.admin-promo-duration { margin: 0 0 20px; padding: 14px 16px; border: 1px solid rgba(67,4,17,.16); display: flex; flex-wrap: wrap; gap: 12px 24px; }
+.admin-promo-duration legend { padding: 0 5px; color: #6c3944; font: 700 9px Arial,sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.admin-promo-duration label { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; color: #430411; cursor: pointer; font: 12px Montserrat,sans-serif; }
+.admin-promo-duration input[type="radio"] { width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; accent-color: #6d1325; }
+.admin-promo-duration small { flex-basis: 100%; color: #86676a; font: 11px/1.5 Montserrat,sans-serif; }
