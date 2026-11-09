@@ -1130,6 +1130,7 @@ function ReviewsPage() {
 }
 
 function CartPage() {
+  const isCmsPreview = new URLSearchParams(window.location.search).has('cmsPreview');
   const cartContent = useSiteContent('cart', { hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' }, recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] }, benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] }, paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }], shippingPrice: 15 });
   const paymentMethods = (Array.isArray(cartContent.paymentMethods) ? cartContent.paymentMethods : []).filter((method) => method?.name?.trim() && (method.image?.trim() || method.information?.trim()));
   const availablePaymentMethods = paymentMethods.length ? paymentMethods : [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }];
@@ -1323,7 +1324,7 @@ function CartPage() {
 
           <aside className="cart-summary"><h2>Order Summary</h2><div className="cart-summary-row"><span>Subtotal ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)</span><strong>RM {subtotal.toFixed(2)}</strong></div>{discount > 0 && <div className="cart-summary-row"><span>Discount</span><strong>− RM {(subtotal * discount).toFixed(2)}</strong></div>}<div className="cart-summary-row"><span>Shipping</span><span>{freeShipping || total >= 200 || shippingPrice === 0 ? 'Complimentary' : `RM ${shippingPrice.toFixed(2)}`}</span></div><div className="cart-summary-total"><span>Total</span><strong>RM {(total + (freeShipping || total >= 200 ? 0 : shippingPrice)).toFixed(2)}</strong></div>
             {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email <small>Optional</small><input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" required /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<div className="cart-payment-method">Touch 'n Go QR</div></label></div>}
-            {cartItems.length > 0 && <label className="cart-payment-picker">Payment method<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}>{availablePaymentMethods.map((method, index) => <option value={method.id} key={method.id || index}>{method.name}</option>)}</select></label>}
+            {(cartItems.length > 0 || isCmsPreview) && <label className="cart-payment-picker">Payment method<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}>{availablePaymentMethods.map((method, index) => <option value={method.id} key={method.id || index}>{method.name}</option>)}</select>{isCmsPreview && !cartItems.length && <small>Preview only — shown at checkout when the cart has items.</small>}</label>}
             {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
             {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={openPayment}>{placingOrder ? 'Creating order…' : 'Place order'} <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
             <a className="cart-continue" href="/shop">Continue shopping</a>
@@ -1719,28 +1720,33 @@ function SiteRouter() {
 
   useEffect(() => {
     if (!new URLSearchParams(window.location.search).has('cmsPreview')) return undefined;
-    let selectedTarget = null;
+    let retryTimer = null;
+    let selectionId = 0;
     const selectors = {
-      home: { hero: '.hero-slider', arrivals: '#new', editorial: '#promotion', story: '#story', promise: '#reviews' },
+      home: { hero: '.hero-slider', categories: '.category-grid', arrivals: '#new', editorial: '#promotion', story: '#story', promise: '#reviews' },
       shop: { promotion: '.shop-promotion', favourites: '.sale-favorites', catalogue: '.shop-catalog' },
-      cart: { hero: '.cart-hero', recommendations: '.cart-recommendations', benefits: '.cart-benefits' },
-      about: { hero: '.about-hero', story: '.about-origin', values: '.about-values', general: '.about-quote', cta: '.about-cta' },
+      cart: { hero: '.cart-hero', recommendations: '.cart-recommendations', benefits: '.cart-benefits', general: '.cart-payment-picker' },
+      about: { hero: '.about-hero', story: '.about-origin', values: '.about-values', general: '.about-quote', journey: '.about-journey', cta: '.about-cta' },
       reviews: { hero: '.reviews-hero', feed: '.reviews-feed', cta: '.reviews-cta' },
       announcement: { general: '.announcement' },
       footer: { general: '#contact', faq: '.care-modal-panel', shipping: '.care-modal-panel', returns: '.care-modal-panel' }
     };
     const receive = (event) => {
       if (event.origin !== window.location.origin || event.data?.type !== 'chrisea-cms-section') return;
+      window.clearTimeout(retryTimer);
+      const currentSelection = ++selectionId;
       document.querySelectorAll('.cms-preview-selected').forEach((element) => element.classList.remove('cms-preview-selected'));
-      const showSection = () => {
-        selectedTarget = document.querySelector(selectors[event.data.page]?.[event.data.section]);
-        if (selectedTarget) {
-          selectedTarget.classList.add('cms-preview-selected');
-          selectedTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const showSection = (attempt = 0) => {
+        if (currentSelection !== selectionId) return;
+        const target = document.querySelector(selectors[event.data.page]?.[event.data.section]);
+        if (target) {
+          target.classList.add('cms-preview-selected');
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (attempt < 12) {
+          retryTimer = window.setTimeout(() => showSection(attempt + 1), 100);
         }
       };
       showSection();
-      if (!selectedTarget) window.setTimeout(showSection, 80);
     };
     const blockInteraction = (event) => {
       if (event.target.closest('a,button,input,select,textarea,form')) { event.preventDefault(); event.stopPropagation(); }
@@ -1749,6 +1755,7 @@ function SiteRouter() {
     document.addEventListener('click', blockInteraction, true);
     document.addEventListener('submit', blockInteraction, true);
     return () => {
+      window.clearTimeout(retryTimer);
       window.removeEventListener('message', receive);
       document.removeEventListener('click', blockInteraction, true);
       document.removeEventListener('submit', blockInteraction, true);
@@ -1864,4 +1871,5 @@ class AppErrorBoundary extends React.Component {
 }
 
 createRoot(document.getElementById('root')).render(<AppErrorBoundary><SiteRouter /></AppErrorBoundary>);
+
 

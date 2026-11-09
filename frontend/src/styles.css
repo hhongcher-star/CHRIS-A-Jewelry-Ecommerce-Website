@@ -2240,8 +2240,10 @@ body,
   .shop-catalog .view-product-button { width: 100%; min-width: 0; min-height: 46px; grid-column: 1; grid-row: 3; border-color: rgba(248,243,233,.8); background: transparent; color: var(--ivory); font-size: 9px; }
   .shop-catalog .view-product-button span { color: var(--ivory); }
 }
-.cms-preview-selected { position: relative; outline: 5px solid #c69a5a !important; outline-offset: -5px; }
-.cms-preview-selected::after { content: 'EDITING THIS SECTION'; width: auto; height: auto; position: absolute; z-index: 9999; top: 12px; right: 12px; bottom: auto; left: auto; padding: 8px 11px; border: 0; border-radius: 0; color: #fffaf0; background: #6d1325; font: 700 9px Montserrat, sans-serif; letter-spacing: .12em; transform: none; pointer-events: none; }
+.cms-preview-selected { position: relative; outline: 5px solid #c69a5a !important; outline-offset: -5px; scroll-margin-top: 165px; }
+.cms-preview-selected::after { content: 'EDITING THIS SECTION'; display: block !important; width: auto; height: auto; position: absolute; z-index: 9999; top: 12px; right: 12px; bottom: auto; left: auto; padding: 8px 11px; border: 0; border-radius: 0; color: #fffaf0; background: #6d1325; font: 700 9px Montserrat, sans-serif; letter-spacing: .12em; transform: none; pointer-events: none; }
+.announcement.cms-preview-selected::after { top: 2px; right: 2px; padding: 6px 8px; font-size: 8px; }
+.cms-preview-payment-note { color: #86676a; font: 11px/1.4 Montserrat, sans-serif; letter-spacing: 0; text-transform: none; }
 .cms-preview-desktop .arrivals { grid-template-columns: 220px minmax(0, 1fr); gap: 42px; }
 .cms-preview-desktop .arrivals .section-intro { max-width: none; }
 .cms-preview-desktop .arrivals .product-track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; overflow: visible; margin-right: 0; padding-right: 0; }
@@ -2291,3 +2293,4 @@ body,
 .receipt-payment img { display: block; width: min(100%, 260px); margin: 18px auto; }
 .receipt-payment button { padding: 12px 20px; border: 0; background: #430411; color: white; cursor: pointer; }
 .receipt-payment button:disabled { opacity: .6; cursor: wait; }
+
