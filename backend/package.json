@@ -20,7 +20,8 @@
     "db:content": "node src/scripts/database.js content",
     "db:discounts": "node src/scripts/database.js discounts",
     "db:promo-rules": "node src/scripts/database.js promo-rules",
-    "db:reviews": "node src/scripts/database.js reviews"
+    "db:reviews": "node src/scripts/database.js reviews",
+    "admin:create": "node src/scripts/create-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
