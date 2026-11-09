@@ -4,7 +4,7 @@ const sections = [
   ['Home', [['hero','.hero-slider'],['categories','.category-grid'],['arrivals','#new'],['editorial','#promotion'],['story','#story'],['promise','#reviews']]],
   ['About', [['hero','.about-hero'],['story','.about-origin'],['values','.about-values'],['About','.about-quote'],['journey','.about-journey'],['cta','.about-cta']]],
   ['Shop', [['promotion','.shop-promotion'],['favourites','.sale-favorites'],['catalogue','.shop-catalog']]],
-  ['Payment method', [['hero','.cart-hero'],['recommendations','.cart-recommendations'],['benefits','.cart-benefits'],['Payment method','.cart-payment-picker']]],
+  ['Cart recommendations', [['hero','.cart-hero'],['recommendations','.cart-recommendations'],['benefits','.cart-benefits'],['Payment method','.cart-payment-picker']]],
   ['Reviews', [['hero','.reviews-hero'],['feed','.reviews-feed'],['cta','.reviews-cta']]],
   ['Announcement bar', [['Announcement bar','.announcement']]],
   ['Footer', [['Footer','#contact'],['faq','.care-modal-panel'],['shipping','.care-modal-panel'],['returns','.care-modal-panel']]]
@@ -50,7 +50,7 @@ async function checkPreview(browser, mobile) {
         }
       }
     }
-    await page.locator('.admin-content-tabs').getByRole('button',{ name:'Payment method', exact:true }).click();
+    await page.locator('.admin-content-tabs').getByRole('button',{ name:'Cart recommendations', exact:true }).click();
     await page.locator('.admin-visual-controls nav').getByRole('button',{ name:'Payment method', exact:true }).click();
     await expect(frame.getByText('Preview only — shown at checkout when the cart has items.')).toBeVisible();
     await page.goto('/cart');
