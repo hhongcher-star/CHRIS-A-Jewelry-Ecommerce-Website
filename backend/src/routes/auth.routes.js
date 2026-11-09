@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { adminLogin, login, logout, me, refresh, register } from '../controllers/auth.controller.js';
-import { authenticate } from '../middleware/authenticate.js';
+import { adminLogin, login, logout, me, refresh, register, updateCredentials } from '../controllers/auth.controller.js';
+import { authenticate, requireRole } from '../middleware/authenticate.js';
 import { requireCsrf } from '../middleware/csrf.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { validate } from '../utils/validation.js';
@@ -40,6 +40,11 @@ const registerSchema = z.object({
 }).strict();
 const loginSchema = z.object({ email, password: z.string().min(1).max(128) }).strict();
 const adminLoginSchema = loginSchema.extend({ rememberMe: z.boolean().optional().default(false) });
+const credentialsSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newEmail: email.optional(),
+  newPassword: password.refine((value) => Buffer.byteLength(value, 'utf8') <= 72, 'Password must not exceed 72 bytes.').optional()
+}).strict().refine((value) => value.newEmail || value.newPassword, 'Provide a new email or password.');
 
 function validateBody(schema) {
   return function validationMiddleware(req, _res, next) {
@@ -55,6 +60,8 @@ function validateBody(schema) {
 authRouter.post('/register', authLimiter, validateBody(registerSchema), asyncHandler(register));
 authRouter.post('/login', authLimiter, validateBody(loginSchema), asyncHandler(login));
 authRouter.post('/admin/login', adminLoginLimiter, validateBody(adminLoginSchema), asyncHandler(adminLogin));
+authRouter.patch('/admin/credentials', authenticate, requireRole('admin'), requireCsrf, adminLoginLimiter, validateBody(credentialsSchema), asyncHandler(updateCredentials));
 authRouter.post('/refresh', authLimiter, asyncHandler(refresh));
 authRouter.post('/logout', authenticate, requireCsrf, asyncHandler(logout));
 authRouter.get('/me', authenticate, me);
+
