@@ -20,6 +20,7 @@ import {
 import HeroSlider from './components/HeroSlider';
 import './styles.css';
 import { checkedCartQuantity, clampCartToCatalogue, parseCart } from './cart-state.js';
+import { reviewButtonMode, safeReviewLink } from './content-links.js';
 
 const AdminApp = React.lazy(() => import('./components/AdminApp'));
 
@@ -1046,6 +1047,7 @@ function ReviewsPage() {
   const [reviewStatus, setReviewStatus] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const reviewsContent = useSiteContent('reviews', { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces are the ones that become part of your story.', image: 'https://images.unsplash.com/photo-1761479267954-983e006443f7?auto=format&fit=crop&w=2400&q=85' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Email', value: 'hello@chrisea.com' }] } });
+  const reviewHref = reviewButtonMode(reviewsContent.cta) === 'link' ? safeReviewLink(reviewsContent.cta.buttonHref) : null;
   const filters = ['All', '5 Stars', '4 Stars', 'With Photos'];
   useEffect(() => { fetch(`${API_URL}/reviews`, { cache: 'no-store' }).then((response) => response.ok ? response.json() : Promise.reject()).then((result) => setSubmittedReviews(result.data?.reviews || [])).catch(() => {}); }, []);
   useEffect(() => {
@@ -1118,7 +1120,7 @@ function ReviewsPage() {
 
         <section className="reviews-cta">
           <div className="reviews-cta-image"><ResponsiveContentImage content={reviewsContent} path="cta.image" src={reviewsContent.cta.image} alt="CHRISÉA jewellery styled by our community" /></div>
-          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span><button className="reviews-cta-button" type="button" onClick={openReviewForm}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></button><div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => { const destination = socialHref(link); return destination ? <a href={destination} target={destination.startsWith('http') ? '_blank' : undefined} rel={destination.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><img src={socialIconFor(link.label)} alt="" /><small>{link.label}</small><strong>{link.value}</strong></a> : null; })}</div></div>
+          <div className="reviews-cta-copy"><p>{reviewsContent.cta.eyebrow}</p><h2>{reviewsContent.cta.title}</h2><span>{reviewsContent.cta.description}</span>{reviewHref ? <a className="reviews-cta-button" href={reviewHref}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></a> : <button className="reviews-cta-button" type="button" onClick={openReviewForm}>{reviewsContent.cta.buttonLabel} <ArrowRight size={14} /></button>}<div className={`reviews-cta-links count-${Math.min(reviewsContent.cta.socialLinks?.length || 0, 3)}`}>{(reviewsContent.cta.socialLinks || []).slice(0, 3).map((link, index) => { const destination = socialHref(link); return destination ? <a href={destination} target={destination.startsWith('http') ? '_blank' : undefined} rel={destination.startsWith('http') ? 'noreferrer' : undefined} key={link.id || `${link.label}-${index}`}><img src={socialIconFor(link.label)} alt="" /><small>{link.label}</small><strong>{link.value}</strong></a> : null; })}</div></div>
         </section>
       </main>
       <SiteFooter />
@@ -1862,3 +1864,4 @@ class AppErrorBoundary extends React.Component {
 }
 
 createRoot(document.getElementById('root')).render(<AppErrorBoundary><SiteRouter /></AppErrorBoundary>);
+
