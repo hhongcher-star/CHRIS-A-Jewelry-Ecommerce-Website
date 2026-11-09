@@ -9,7 +9,7 @@ const pageKeys = {
   about: new Set(['hero', 'story', 'valuesEyebrow', 'valuesTitle', 'values', 'quote', 'journey', 'cta', '_mobileImages', '_imageAdjustments']),
   shop: new Set(['promotion', 'favourites', 'catalogue', '_mobileImages', '_imageAdjustments']),
   cart: new Set(['hero', 'recommendations', 'benefits', 'paymentMethods', 'shippingPrice', '_mobileImages', '_imageAdjustments']),
-  reviews: new Set(['hero', 'feed', 'cta', '_mobileImages', '_imageAdjustments']),
+  reviews: new Set(['hero', 'feed', 'cta', 'social', '_mobileImages', '_imageAdjustments']),
   announcement: new Set(['messages']),
   footer: new Set(['brandText', 'socialLabel', 'shopTitle', 'careTitle', 'newsletterTitle', 'newsletterText', 'copyright', 'legalText', 'care'])
 };
@@ -100,3 +100,4 @@ export async function publishContent(req, res) {
   if (!result.affectedRows) throw new AppError(409, 'NO_CONTENT_DRAFT', 'Save this page before publishing it.');
   res.json({ success: true, data: { page: key, published: true } });
 }
+
