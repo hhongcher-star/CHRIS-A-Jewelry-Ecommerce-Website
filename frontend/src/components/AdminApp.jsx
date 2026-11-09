@@ -243,7 +243,7 @@ function AdminLogin({ onLogin }) {
           <p className="admin-login-intro">Manage the collection and care for every CHRISÉA order.</p>
           <label>Email address<span className="admin-input"><Mail /><input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(''); }} autoComplete="username" placeholder="Enter your email" required /></span></label>
           <label>Password<span className="admin-input"><LockKeyhole /><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => { setPassword(event.target.value); setError(''); }} autoComplete="current-password" placeholder="Enter your password" required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff /> : <Eye />}</button></span></label>
-          <div className="admin-login-options"><label><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /> <span>Keep me signed in</span></label><button type="button" disabled>Forgot password?</button></div>
+          <div className="admin-login-options"><label><input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /> <span>Keep me signed in</span></label></div>
           {error && <p className="admin-form-error" role="alert">{error}</p>}
           <button type="submit" disabled={loading}>{loading ? 'Signing in…' : 'Enter dashboard'} <ArrowUpRight /></button>
           <div className="admin-login-divider"><i /><span>Secure administrator access</span><i /></div>
@@ -946,6 +946,8 @@ function ReviewsInbox({ reviews = [], onChanged }) {
 }
 
 function AdminCredentials({ onClose, onChanged }) {
+  const [visiblePasswords, setVisiblePasswords] = useState({ current: false, next: false, confirm: false });
+  const togglePassword = (key) => setVisiblePasswords((current) => ({ ...current, [key]: !current[key] }));
   const [currentPassword, setCurrentPassword] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -976,11 +978,11 @@ function AdminCredentials({ onClose, onChanged }) {
     <section className="admin-content-picker admin-credentials" role="dialog" aria-modal="true" aria-labelledby="admin-credentials-title">
       <header><div><p>Account security</p><h2 id="admin-credentials-title">Change login details</h2><span>Update your administrator email, password, or both.</span></div>{!success && <button type="button" onClick={onClose} aria-label="Close"><X /></button>}</header>
       {success ? <div className="admin-credentials-body"><p>Your login details have been updated. Please sign in again using your new details.</p><button type="button" className="admin-primary" onClick={onChanged}>Sign in</button></div> : <form className="admin-credentials-body" onSubmit={submit}>
-        <label><span>Current password</span><input type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+        <div className="admin-credential-password"><label htmlFor="admin-current-password">Current password</label><span className="admin-password-field"><input id="admin-current-password" type={visiblePasswords.current ? "text" : "password"} autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /><button type="button" onClick={() => togglePassword("current")} aria-label={visiblePasswords.current ? "Hide current password" : "Show current password"} aria-pressed={visiblePasswords.current}>{visiblePasswords.current ? <EyeOff /> : <Eye />}</button></span></div>
         <label><span>New email (optional)</span><input type="email" autoComplete="off" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} /></label>
         <label><span>Confirm new email</span><input type="email" autoComplete="off" value={confirmEmail} onChange={(event) => setConfirmEmail(event.target.value)} /></label>
-        <label><span>New password (optional, at least 10 characters)</span><input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label>
-        <label><span>Confirm new password</span><input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
+        <div className="admin-credential-password"><label htmlFor="admin-next-password">New password (optional, at least 10 characters)</label><span className="admin-password-field"><input id="admin-next-password" type={visiblePasswords.next ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button type="button" onClick={() => togglePassword("next")} aria-label={visiblePasswords.next ? "Hide new password" : "Show new password"} aria-pressed={visiblePasswords.next}>{visiblePasswords.next ? <EyeOff /> : <Eye />}</button></span></div>
+        <div className="admin-credential-password"><label htmlFor="admin-confirm-password">Confirm new password</label><span className="admin-password-field"><input id="admin-confirm-password" type={visiblePasswords.confirm ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /><button type="button" onClick={() => togglePassword("confirm")} aria-label={visiblePasswords.confirm ? "Hide confirmation password" : "Show confirmation password"} aria-pressed={visiblePasswords.confirm}>{visiblePasswords.confirm ? <EyeOff /> : <Eye />}</button></span></div>
         {error && <p className="admin-form-error" role="alert">{error}</p>}
         <button type="submit" className="admin-primary" disabled={busy}>{busy ? 'Saving…' : 'Save login details'}</button>
       </form>}

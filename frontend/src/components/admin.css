@@ -1459,3 +1459,10 @@
 .admin-shipping-price input { width: 100%; height: 42px; padding: 0 12px; border: 1px solid #cdb8af; background: white; color: #430411; font: 16px Montserrat, sans-serif; }
 @media (max-width: 720px) { .admin-shipping-price { align-items: stretch; flex-direction: column; } .admin-shipping-price label { min-width: 0; } }
 
+
+.admin-credentials-body .admin-password-field { display: flex; position: relative; }
+.admin-credentials-body .admin-password-field input { padding-right: 52px; }
+.admin-credentials-body .admin-password-field button { position: absolute; right: 0; top: 0; width: 48px; height: 100%; border: 0; background: transparent; color: #946d51; cursor: pointer; display: grid; place-items: center; }
+.admin-credentials-body .admin-password-field button svg { width: 20px; height: 20px; }
+
+.admin-credential-password { display: grid; gap: 6px; }
