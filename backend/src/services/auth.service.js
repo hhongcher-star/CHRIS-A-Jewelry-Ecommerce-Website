@@ -95,6 +95,28 @@ export async function loginAdminUser(input) {
   return createLoginSession(user);
 }
 
+export async function updateAdminCredentials(userId, { currentPassword, newEmail, newPassword }) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute('SELECT * FROM users WHERE id = ? FOR UPDATE', [userId]);
+    const user = rows[0];
+    if (!user || user.role !== 'admin' || user.status !== 'active' || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+      throw new AppError(401, 'INVALID_CREDENTIALS', 'The current password is incorrect.');
+    }
+    const passwordHash = newPassword ? await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS) : user.password_hash;
+    await connection.execute('UPDATE users SET email_verified_at = CASE WHEN email = ? THEN email_verified_at ELSE NULL END, email = ?, password_hash = ? WHERE id = ?', [newEmail || user.email, newEmail || user.email, passwordHash, userId]);
+    await connection.execute('UPDATE auth_sessions SET revoked_at = UTC_TIMESTAMP() WHERE user_id = ? AND revoked_at IS NULL', [userId]);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    if (error.code === 'ER_DUP_ENTRY') throw new AppError(409, 'EMAIL_IN_USE', 'An account already exists for this email address.');
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function refreshSession(refreshToken) {
   const tokenHash = hashRefreshToken(refreshToken);
   const connection = await pool.getConnection();
@@ -136,3 +158,4 @@ export async function getUserById(id) {
   const [rows] = await pool.execute(`SELECT ${publicUserColumns} FROM users WHERE id = ? LIMIT 1`, [id]);
   return rows[0] || null;
 }
+
