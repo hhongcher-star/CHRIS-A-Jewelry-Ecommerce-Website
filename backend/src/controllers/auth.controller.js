@@ -14,8 +14,9 @@ const baseCookieOptions = {
   sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
 };
 
-function sendAuthentication(res, status, result, persistent = false) {
-  const csrfToken = crypto.randomBytes(32).toString('base64url');
+function sendAuthentication(res, status, result, persistent = false, existingCsrfToken = null) {
+  const csrfToken = typeof existingCsrfToken === 'string' && /^[A-Za-z0-9_-]{43}$/.test(existingCsrfToken)
+    ? existingCsrfToken : crypto.randomBytes(32).toString('base64url');
   const persistence = persistent ? { maxAge: durationToMilliseconds(env.JWT_REFRESH_EXPIRES_IN) } : {};
   res.cookie(cookieName, result.refreshToken, { ...baseCookieOptions, ...persistence, path: '/api/auth' });
   res.cookie(accessCookieName, result.accessToken, { ...baseCookieOptions, ...persistence, path: '/api' });
@@ -43,7 +44,7 @@ export async function adminLogin(req, res) {
 export async function refresh(req, res) {
   const token = req.cookies[cookieName];
   if (!token) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'The session is invalid or expired.');
-  sendAuthentication(res, 200, await refreshSession(token), req.cookies[rememberCookieName] === '1');
+  sendAuthentication(res, 200, await refreshSession(token), req.cookies[rememberCookieName] === '1', req.cookies[csrfCookieName]);
 }
 
 export async function logout(req, res) {
