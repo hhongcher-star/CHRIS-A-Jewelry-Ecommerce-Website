@@ -119,6 +119,10 @@ async function api(path, options = {}) {
     return api(path, { ...requestOptions, retryAuth: false });
   }
   const data = response.status === 204 ? null : await response.json();
+  if (response.status === 403 && data?.error?.code === 'INVALID_CSRF_TOKEN' && retryAuth) {
+    if (requestGeneration === authGeneration) await refreshAuthentication();
+    return api(path, { ...requestOptions, retryAuth: false });
+  }
   if (!response.ok) {
     const error = new Error(data?.error?.message || 'Something went wrong.');
     error.status = response.status;
