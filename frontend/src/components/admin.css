@@ -382,7 +382,9 @@
 .admin-product-table .admin-product-cell { min-width: 390px; gap: 18px; }
 .admin-product-table .admin-product-cell img { width: 86px; height: 86px; flex: 0 0 86px; border: 1px solid rgba(67,4,17,.08); }
 .admin-product-table .admin-product-cell strong { font-size: 17px; }
-.admin-product-table th:nth-child(3), .admin-product-table td:nth-child(3) { min-width: 138px; }
+.admin-product-table th:nth-child(4), .admin-product-table td:nth-child(4) { min-width: 138px; }
+.admin-product-table .admin-product-skus { min-width: 140px; overflow-wrap: anywhere; }
+.admin-product-table .admin-product-skus > div + div { margin-top: 6px; }
 .admin-product-price { display: inline-block; white-space: nowrap; font: 500 16px/1.2 'Montserrat', sans-serif !important; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: 'lnum' 1, 'tnum' 1; letter-spacing: -.02em; }
 .admin-inventory { min-width: 105px; display: flex; flex-direction: column; gap: 7px; }
 .admin-inventory b { font-size: 12px; font-weight: 500; }

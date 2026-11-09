@@ -228,7 +228,7 @@ export async function listProducts(req, res) {
   const status = ['draft', 'active'].includes(req.query.status) ? req.query.status : '';
   const conditions = ["p.status <> 'archived'"];
   const params = [];
-  if (query) { conditions.push('(p.name LIKE ? OR p.slug LIKE ?)'); params.push(`%${query}%`, `%${query}%`); }
+  if (query) { conditions.push('(p.name LIKE ? OR p.slug LIKE ? OR EXISTS (SELECT 1 FROM product_variants sku_variant WHERE sku_variant.product_id = p.id AND sku_variant.sku LIKE ?))'); params.push(`%${query}%`, `%${query}%`, `%${query}%`); }
   if (category) { conditions.push('c.name = ?'); params.push(category); }
   if (status) { conditions.push('p.status = ?'); params.push(status); }
   const where = conditions.join(' AND ');
@@ -250,8 +250,15 @@ export async function listProducts(req, res) {
     LIMIT ? OFFSET ?
   `, [...params, pageSize, offset])
   ]);
+  const skusByProduct = new Map(rows.map((row) => [String(row.id), []]));
+  if (rows.length) {
+    const placeholders = rows.map(() => '?').join(', ');
+    const [skuRows] = await pool.query(`SELECT product_id, sku FROM product_variants WHERE product_id IN (${placeholders}) ORDER BY product_id, id`, rows.map((row) => row.id));
+    for (const variant of skuRows) skusByProduct.get(String(variant.product_id))?.push(variant.sku);
+  }
+  const products = rows.map((row) => ({ ...row, skus: skusByProduct.get(String(row.id)) }));
   const total = Number(countRow[0]?.total || 0);
-  res.json({ success: true, data: { products: rows, pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) } } });
+  res.json({ success: true, data: { products, pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) } } });
 }
 
 export async function getProduct(req, res) {
