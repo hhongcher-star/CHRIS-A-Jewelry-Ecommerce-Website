@@ -7,12 +7,15 @@ import {
 } from 'lucide-react';
 import './admin.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_ADMIN_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const REMEMBER_KEY = 'chrisea-admin-remember';
 let csrfToken = null;
+let refreshPromise = null;
+let authGeneration = 0;
 
 function storeSecurityContext(token, persistent = window.localStorage.getItem(REMEMBER_KEY) === 'true') {
   csrfToken = token;
+  authGeneration += 1;
   if (persistent) window.localStorage.setItem(REMEMBER_KEY, 'true');
   else window.localStorage.removeItem(REMEMBER_KEY);
 }
@@ -48,19 +51,33 @@ function requestAdminConfirmation({ eyebrow = 'Please confirm', title, message, 
   });
 }
 
-async function refreshAuthentication() {
+async function performRefreshAuthentication() {
   const response = await fetch(`${API_URL}/auth/refresh`, {
     method: 'POST',
     credentials: 'include',
     signal: AbortSignal.timeout(12000)
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok || data?.data?.user?.role !== 'admin' || !data?.data?.csrfToken) {
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      clearSecurityContext();
+      throw new Error('Your administrator session has expired. Please sign in again.');
+    }
+    throw new Error(data?.error?.message || 'Unable to restore your session. Please try again.');
+  }
+  if (data?.data?.user?.role !== 'admin' || !data?.data?.csrfToken) {
     clearSecurityContext();
-    throw new Error('Your administrator session has expired.');
+    throw new Error('Your administrator session is invalid. Please sign in again.');
   }
   storeSecurityContext(data.data.csrfToken);
   return data.data;
+}
+
+function refreshAuthentication() {
+  if (!refreshPromise) {
+    refreshPromise = performRefreshAuthentication().finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
 }
 
 async function restoreAuthentication() {
@@ -73,6 +90,7 @@ async function api(path, options = {}) {
   const attempts = canRetry ? 3 : 1;
   let response;
   let connectionError;
+  const requestGeneration = authGeneration;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       response = await fetch(`${API_URL}${path}`, {
@@ -97,7 +115,7 @@ async function api(path, options = {}) {
     throw new Error('The admin server is briefly unavailable. Retrying the page usually restores it.');
   }
   if (response.status === 401 && retryAuth && !path.startsWith('/auth/')) {
-    await refreshAuthentication();
+    if (requestGeneration === authGeneration) await refreshAuthentication();
     return api(path, { ...requestOptions, retryAuth: false });
   }
   const data = response.status === 204 ? null : await response.json();
