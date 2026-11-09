@@ -258,7 +258,7 @@
 
 /* Editorial dashboard */
 .admin-shell { grid-template-columns: 240px minmax(0, 1fr); }
-.admin-sidebar { width: 240px; padding: 24px 14px 20px; overflow: hidden; background: linear-gradient(180deg, rgba(67,4,17,.98) 0%, rgba(67,4,17,.96) 58%, rgba(67,4,17,.62) 100%), url('/assets/admin/sidebar-red-velvet-ring.jpg') 58% bottom/auto 49% no-repeat; }
+.admin-sidebar { width: 240px; padding: 24px 14px 20px; overflow-y: auto; overflow-x: hidden; background: linear-gradient(180deg, rgba(67,4,17,.98) 0%, rgba(67,4,17,.96) 58%, rgba(67,4,17,.62) 100%), url('/assets/admin/sidebar-red-velvet-ring.jpg') 58% bottom/auto 49% no-repeat; }
 .admin-brand { height: 112px; padding: 0; border: 0; justify-content: center; }
 .admin-brand img { width: 118px; height: 118px; filter: none; }
 .admin-sidebar nav { padding-top: 17px; gap: 6px; }
