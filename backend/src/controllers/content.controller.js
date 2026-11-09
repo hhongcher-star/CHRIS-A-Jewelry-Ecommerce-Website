@@ -11,7 +11,7 @@ const pageKeys = {
   cart: new Set(['hero', 'recommendations', 'benefits', 'paymentMethods', 'shippingPrice', '_mobileImages', '_imageAdjustments']),
   reviews: new Set(['hero', 'feed', 'cta', '_mobileImages', '_imageAdjustments']),
   announcement: new Set(['messages']),
-  footer: new Set(['brandText', 'socialLabel', 'shopTitle', 'careTitle', 'copyright', 'legalText', 'care'])
+  footer: new Set(['brandText', 'socialLabel', 'shopTitle', 'careTitle', 'newsletterTitle', 'newsletterText', 'copyright', 'legalText', 'care'])
 };
 const contentSchema = z.record(z.string().min(1).max(100), z.unknown());
 
