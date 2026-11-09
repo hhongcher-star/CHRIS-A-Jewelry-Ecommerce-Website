@@ -53,3 +53,7 @@ environment, `DB_HOST` is normally `localhost`.
 
 The database scripts deliberately remove `CREATE DATABASE` and `USE` statements
 before execution, so they operate only on the database selected by `DB_NAME`.
+
+## Create an additional administrator
+
+From a trusted interactive terminal on the backend host, with the backend database environment configured, run `npm run admin:create`. Enter the new administrator's email and password at the prompts; password input is hidden. The command only inserts a new account and refuses existing emails. It does not reset, promote, or overwrite existing accounts. The password must have at least 12 characters and at most 72 UTF-8 bytes. Do not put the password in the command or shell history. Keep database credentials out of chat and screenshots.
