@@ -785,7 +785,7 @@ const contentPages = {
     defaults: {
       hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' },
       recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] },
-      benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] },
+      benefits: { items: [{ title: 'Free shipping', text: 'Orders from RM200 after discounts' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] },
       paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }],
       shippingPrice: 15
     },
@@ -796,7 +796,7 @@ const contentPages = {
     defaults: { hero: { eyebrow: 'The CHRISÉA experience', title: 'Loved, Worn & Cherished.', description: 'Stories from our community—because the most meaningful pieces become part of your story.', image: '/assets/reviews/reviews-hero.jpg' }, feed: { eyebrow: 'Community notes', title: 'In their own words', items: [] }, cta: { eyebrow: 'Your story matters', title: 'A Little Love Note?', description: 'We’d love to hear about your CHRISÉA experience.', buttonLabel: 'Write a review', buttonHref: 'mailto:hello@chrisea.com', image: '/assets/reviews/review-styling.jpg', socialLinks: [{ label: 'Email', value: 'hello@chrisea.com' }] } },
     fields: [['hero.eyebrow','Hero small title'],['hero.title','Hero title'],['hero.description','Hero description','textarea'],['hero.image','Hero image','image'],['feed.eyebrow','Reviews small title'],['feed.title','Reviews title'],['feed.items','Customer reviews','reviews'],['cta.eyebrow','Review CTA small title'],['cta.title','Review CTA title'],['cta.description','Review CTA description','textarea'],['cta.buttonLabel','Review CTA button'],['cta.buttonMode','Review button action','review-action'],['cta.buttonHref','Review button link'],['cta.image','Review CTA image','image'],['cta.socialLinks','Social media & contact links','social-links']]
   },
-  announcement: { label: 'Announcement bar', defaults: { messages: ['Complimentary shipping on orders over RM200', 'Gift-ready packaging'] }, fields: [['messages','Announcements','products']] },
+  announcement: { label: 'Announcement bar', defaults: { messages: ['Complimentary shipping on orders from RM200 after discounts', 'Gift-ready packaging'] }, fields: [['messages','Announcements','products']] },
   footer: { label: 'Footer', defaults: { brandText: 'Timeless pieces for modern romantics. Designed to celebrate every chapter.', socialLabel: 'Follow our journey', shopTitle: 'Shop', careTitle: 'Customer care', copyright: '© 2026 CHRISÉA Jewelry. All rights reserved.', legalText: 'Privacy Policy | Terms & Conditions' }, fields: [['brandText','Brand description','textarea'],['socialLabel','Social link text'],['shopTitle','Shop heading'],['careTitle','Customer care heading'],['copyright','Copyright text'],['legalText','Legal links text']] }
 };
 

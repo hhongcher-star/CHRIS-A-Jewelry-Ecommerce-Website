@@ -13,10 +13,15 @@ function requireSecret() {
 export function createAccessToken(user) {
   requireSecret();
   return jwt.sign(
-    { role: user.role },
+    { role: user.role, credentialVersion: credentialVersion(user.password_hash) },
     env.JWT_SECRET,
     { subject: String(user.id), expiresIn: env.JWT_EXPIRES_IN, issuer: 'chrisea-api' }
   );
+}
+
+export function credentialVersion(passwordHash) {
+  requireSecret();
+  return crypto.createHmac('sha256', env.JWT_SECRET).update(String(passwordHash || '')).digest('hex');
 }
 
 export function verifyAccessToken(token) {

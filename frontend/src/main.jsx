@@ -19,8 +19,12 @@ import {
 } from 'lucide-react';
 import HeroSlider from './components/HeroSlider';
 import './styles.css';
-import { checkedCartQuantity, clampCartToCatalogue, parseCart } from './cart-state.js';
+import { checkedCartQuantity, clampCartToCatalogue } from './cart-state.js';
 import { reviewButtonMode, safeReviewLink } from './content-links.js';
+import { readCart, updateCart, subscribeCart } from './cart-store.js';
+import { useCartPromotion } from './use-cart-promotion.js';
+import { receiptPaymentStatus, receiptSummaryRows } from './receipt-summary.js';
+import { freshAssetUrl } from './asset-url.js';
 
 const AdminApp = React.lazy(() => import('./components/AdminApp'));
 
@@ -90,8 +94,8 @@ function ResponsiveContentImage({ content, path, src, className = '', ...props }
   const desktopClass = `${className} cms-adjustable-image cms-image-desktop has-mobile`.trim();
   const mobileClass = `${className} cms-adjustable-image cms-image-mobile`.trim();
   return <>
-    <img className={desktopClass} src={src} style={desktopStyle} {...props} />
-    <img className={mobileClass} src={mobileSrc || src} style={mobileStyle} {...props} />
+    <img className={desktopClass} src={freshAssetUrl(src)} style={desktopStyle} {...props} />
+    <img className={mobileClass} src={freshAssetUrl(mobileSrc || src)} style={mobileStyle} {...props} />
   </>;
 }
 
@@ -268,13 +272,13 @@ const catalogueDescription = (description = '') => description.split(/\r?\n/).fi
 
 function normaliseCatalogueProduct(product) {
   const fallback = shopProducts.find((item) => item.name === product.name || productSlug(item) === product.slug);
-  const imageList = (product.images || []).map((image) => image.image_url).filter(Boolean);
+  const imageList = (product.images || []).map((image) => freshAssetUrl(image.image_url)).filter(Boolean);
   const purchaseVariant = product.purchase_variant ? { ...product.purchase_variant, price: Number(product.purchase_variant.price ?? product.base_price ?? 0), stock_quantity: Number(product.purchase_variant.stock_quantity || 0) } : null;
   const basePrice = Number(product.base_price ?? purchaseVariant?.price ?? 0);
   const discountPercent = Math.max(0, Math.min(100, Number(product.discount_percent) || 0));
-  const salePrice = Number((basePrice * (1 - discountPercent / 100)).toFixed(2));
-  const primaryImage = imageList[0] || fallback?.image || `${A}/enamel-coin-necklace/01-main.png`;
-  const secondaryImage = imageList[1] || imageList[0] || fallback?.hoverImage || primaryImage;
+  const salePrice = Number(Number(purchaseVariant?.price ?? (basePrice * (1 - discountPercent / 100))).toFixed(2));
+  const primaryImage = imageList[0] || freshAssetUrl(fallback?.image || `${A}/enamel-coin-necklace/01-main.png`);
+  const secondaryImage = imageList[1] || imageList[0] || freshAssetUrl(fallback?.hoverImage) || primaryImage;
   return {
     ...product,
     slug: product.slug || productSlug(product),
@@ -292,20 +296,24 @@ function normaliseCatalogueProduct(product) {
     color: product.color || catalogueDetail(product.description, ['Color', 'Colour']),
     size: product.size || catalogueDetail(product.description, ['Size', 'Ring Size', 'Bracelet Length', 'Chain Length']),
     purchaseVariant,
-    stock: Number(product.stock_quantity ?? purchaseVariant?.stock_quantity ?? 0),
+    variants: product.variants || (purchaseVariant ? [purchaseVariant] : []),
+    stock: Number(purchaseVariant?.stock_quantity ?? product.stock_quantity ?? 0),
   };
 }
 
 let catalogueProductsCache = null;
 let catalogueProductsRequest = null;
+let catalogueProductsFetchedAt = 0;
+const CATALOGUE_CACHE_MS = 30_000;
 
 function loadCatalogueProducts() {
-  if (catalogueProductsCache) return Promise.resolve(catalogueProductsCache);
+  if (catalogueProductsCache && Date.now() - catalogueProductsFetchedAt < CATALOGUE_CACHE_MS) return Promise.resolve(catalogueProductsCache);
   if (!catalogueProductsRequest) {
-    catalogueProductsRequest = fetch(`${API_URL}/products`)
+    catalogueProductsRequest = fetch(`${API_URL}/products`, { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Catalogue unavailable')))
       .then((result) => {
         catalogueProductsCache = (result.data?.products || []).map(normaliseCatalogueProduct);
+        catalogueProductsFetchedAt = Date.now();
         return catalogueProductsCache;
       })
       .finally(() => { catalogueProductsRequest = null; });
@@ -316,17 +324,25 @@ function loadCatalogueProducts() {
 function useCatalogueProducts() {
   const [catalogueProducts, setCatalogueProducts] = useState(catalogueProductsCache || []);
   const [loading, setLoading] = useState(!catalogueProductsCache);
+  const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    loadCatalogueProducts()
-      .then((items) => { if (active) setCatalogueProducts(items); })
+    const refresh = () => loadCatalogueProducts()
+      .then((items) => { if (active) { setCatalogueProducts(items); setError(''); } })
       .catch(() => {
-        if (active) setCatalogueProducts(shopProducts.map((product) => normaliseCatalogueProduct(product)));
+        if (active && !catalogueProductsCache) { setCatalogueProducts([]); setError('The collection is temporarily unavailable.'); }
       })
       .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    refresh();
+    const timer = window.setInterval(refresh, CATALOGUE_CACHE_MS);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
   }, []);
-  return { products: catalogueProducts, loading };
+  return { products: catalogueProducts, loading, error };
+}
+
+function CatalogueError() {
+  return <div className="shop-catalog-message" role="status"><Gem /><h3>The collection is temporarily unavailable.</h3><p>Please try again to see current prices and availability.</p><button className="button button-dark" type="button" onClick={() => window.location.reload()}>Try again</button></div>;
 }
 
 const getProductStock = (product, inventory = {}) => {
@@ -335,20 +351,7 @@ const getProductStock = (product, inventory = {}) => {
   return inventory[product.slug || inventorySlugs[product.name]];
 };
 
-const CART_KEY = 'chrisea-cart';
 window.localStorage.removeItem('chrisea-latest-receipt');
-const readCart = () => {
-  const raw = window.localStorage.getItem(CART_KEY);
-  const safeItems = parseCart(raw);
-  const canonical = JSON.stringify(safeItems);
-  if (raw !== canonical) window.localStorage.setItem(CART_KEY, canonical);
-  return safeItems;
-};
-const writeCart = (items) => {
-  const safeItems = parseCart(items);
-  window.localStorage.setItem(CART_KEY, JSON.stringify(safeItems));
-  window.dispatchEvent(new CustomEvent('chrisea-cart-change', { detail: safeItems }));
-};
 
 async function notifyPayment(receipt) {
   const response = await fetch(`${API_URL}/orders/${receipt.orderId}/payment-notice`, {
@@ -366,25 +369,26 @@ const addCartItem = async (product, quantity = 1) => {
   if (!response.ok) throw new Error('Unable to verify stock. Please try again.');
   const result = await response.json();
   const liveProduct = normaliseCatalogueProduct(result.data?.product || {});
-  const selectedVariantId = product.selectedVariantId || product.purchaseVariant?.id || null;
-  if (selectedVariantId && String(liveProduct.purchaseVariant?.id) !== String(selectedVariantId)) {
+  const selectedVariantId = product.selectedVariantId || product.purchaseVariant?.id || liveProduct.purchaseVariant?.id || null;
+  const liveVariant = liveProduct.variants.find(variant => String(variant.id) === String(selectedVariantId));
+  if (!liveVariant) {
     throw new Error('This item option is no longer available.');
   }
-  const stock = Math.max(0, Math.floor(Number(liveProduct.purchaseVariant?.stock_quantity ?? liveProduct.stock) || 0));
+  const stock = Math.max(0, Math.floor(Number(liveVariant.stock_quantity) || 0));
   const requestedQuantity = Math.floor(Number(quantity));
   if (!Number.isFinite(requestedQuantity) || requestedQuantity < 1) throw new Error('Please select a valid quantity.');
-  const items = readCart();
-  const cartKey = `${slug}:${selectedVariantId || ''}`;
-  const existing = items.find((item) => (item.key || `${item.slug || item.name}:`) === cartKey);
-  const quantityCheck = checkedCartQuantity(existing?.quantity, requestedQuantity, stock);
-  const existingQuantity = quantityCheck.existing;
-  if (!quantityCheck.ok) {
-    throw new Error(stock === 0 ? 'This item is sold out.' : `Only ${stock} item${stock === 1 ? '' : 's'} available. You already have ${existingQuantity} in your cart.`);
-  }
-  const cartItem = { key: cartKey, slug, name: liveProduct.name || product.name, variantId: selectedVariantId, quantity: requestedQuantity };
-  const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: quantityCheck.quantity } : item) : [...items, cartItem];
-  writeCart(next);
-  return next;
+  return updateCart((items) => {
+    const cartKey = `${slug}:${selectedVariantId || ''}`;
+    const existing = items.find((item) => (item.key || `${item.slug || item.name}:`) === cartKey);
+    const quantityCheck = checkedCartQuantity(existing?.quantity, requestedQuantity, stock);
+    const existingQuantity = quantityCheck.existing;
+    if (!quantityCheck.ok) {
+      throw new Error(stock === 0 ? 'This item is sold out.' : `Only ${stock} item${stock === 1 ? '' : 's'} available. You already have ${existingQuantity} in your cart.`);
+    }
+    const cartItem = { key: cartKey, slug, name: liveProduct.name || product.name, variantId: selectedVariantId, quantity: requestedQuantity };
+    const next = existing ? items.map((item) => (item.key || `${item.slug || item.name}:`) === cartKey ? { ...item, quantity: quantityCheck.quantity } : item) : [...items, cartItem];
+    return next;
+  });
 };
 
 async function addCartItemAnimated(event, product, quantity = 1, onAdded) {
@@ -452,7 +456,7 @@ function BrandMark({ light = false }) {
   if (!light) {
     return (
       <a className="brand-mark brand-mark--logo" href="/#top" aria-label="CHRISÉA Jewelry home">
-        <img src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry" />
+        <img src={freshAssetUrl("/assets/brand/chrisea-logo-full-transparent.png")} alt="CHRISÉA Jewelry" />
       </a>
     );
   }
@@ -467,8 +471,8 @@ function BrandMark({ light = false }) {
 }
 
 function Header() {
-  const announcement = useSiteContent('announcement', { messages: ['Complimentary shipping on orders over RM200', 'Gift-ready packaging'] });
-  const announcementMessages = announcement.messages?.length >= 2 ? announcement.messages.slice(0, 4) : [announcement.message1, announcement.message2].filter(Boolean);
+  const announcement = useSiteContent('announcement', { messages: ['Complimentary shipping on orders from RM200 after discounts', 'Gift-ready packaging'] });
+  const announcementMessages = (announcement.messages?.length >= 2 ? announcement.messages.slice(0, 4) : [announcement.message1, announcement.message2].filter(Boolean)).map(message => message === 'Complimentary shipping on orders over RM200' ? 'Complimentary shipping on orders from RM200 after discounts' : message);
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -479,9 +483,7 @@ function Header() {
     return () => document.body.classList.remove('menu-open');
   }, [open]);
   useEffect(() => {
-    const updateCount = (event) => setCartCount((event.detail || readCart()).reduce((total, item) => total + item.quantity, 0));
-    window.addEventListener('chrisea-cart-change', updateCount);
-    return () => window.removeEventListener('chrisea-cart-change', updateCount);
+    return subscribeCart(items => setCartCount(items.reduce((total, item) => total + item.quantity, 0)));
   }, []);
   useEffect(() => {
     if (!searchOpen) return undefined;
@@ -622,7 +624,7 @@ function SiteFooter() {
   return (
     <footer id="contact">
       <div className="footer-main section-pad">
-        <div className="footer-brand"><img className="footer-logo" src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry logo" /><p>{footerContent.brandText}</p><a href="/#top"><span aria-hidden="true">◎</span> {footerContent.socialLabel}</a></div>
+        <div className="footer-brand"><img className="footer-logo" src={freshAssetUrl("/assets/brand/chrisea-logo-full-transparent.png")} alt="CHRISÉA Jewelry logo" /><p>{footerContent.brandText}</p><a href="/#top"><span aria-hidden="true">◎</span> {footerContent.socialLabel}</a></div>
         <div><h3>{footerContent.shopTitle}</h3><a href="/shop">All products</a><a href="/shop?category=Necklaces">Necklaces</a><a href="/shop?category=Earrings">Earrings</a><a href="/shop?category=Rings">Rings</a><a href="/shop?category=Bracelets">Bracelets</a></div>
         <div className="footer-care"><h3>{footerContent.careTitle}</h3><button type="button" onClick={() => setCarePanel('faq')}>FAQ</button><button type="button" onClick={() => setCarePanel('shipping')}>Shipping & delivery</button><button type="button" onClick={() => setCarePanel('returns')}>Return & refund</button></div>
       </div>
@@ -770,7 +772,7 @@ function ShopPromotionSlider({ content, mobileImages = {}, imageAdjustments = {}
   return (
     <section className="shop-promotion" aria-roledescription="carousel" aria-label="Current promotions">
       <div className="shop-promotion-media">
-        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-desktop has-mobile`} src={promotion.image} style={promotion.desktopStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} /><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-mobile`} src={promotion.mobileImage || promotion.image} style={promotion.mobileStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} /></React.Fragment>)}
+        {visiblePromotions.map((promotion, index) => <React.Fragment key={promotion.id}><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-desktop has-mobile`} src={freshAssetUrl(promotion.image)} style={promotion.desktopStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} /><img className={`${index === safeActive ? 'is-active ' : ''}cms-adjustable-image cms-image-mobile`} src={freshAssetUrl(promotion.mobileImage || promotion.image)} style={promotion.mobileStyle} alt={index === safeActive ? promotion.imageAlt : ''} aria-hidden={index !== safeActive} /></React.Fragment>)}
       </div>
       <div className="shop-promotion-shade" />
       <div className="shop-promotion-copy" key={current.id}>
@@ -832,7 +834,7 @@ function ShopPage() {
   const catalogue = shop?.catalogue && typeof shop.catalogue === 'object' ? shop.catalogue : { eyebrow: 'Shop by category', title: 'Find your signature piece', productOrders: { All: [] } };
   const requestedCategory = new URLSearchParams(window.location.search).get('category');
   const catalogueCategories = useCatalogueCategories();
-  const { products: catalogueProducts, loading } = useCatalogueProducts();
+  const { products: catalogueProducts, loading, error: catalogueError } = useCatalogueProducts();
   const [category, setCategory] = useState(requestedCategory || 'All');
   const favouriteIds = (Array.isArray(favourites.productIds) ? favourites.productIds : []).map(String);
   const selectedFavourites = favouriteIds.map((id) => catalogueProducts.find((product) => String(product.id) === id)).filter(Boolean);
@@ -873,7 +875,8 @@ function ShopPage() {
           </div>
           <div className="shop-grid">
             {loading && <ProductGridSkeleton />}
-            {!loading && !visibleProducts.length && <div className="shop-catalog-message"><Gem /><h3>No active pieces in this category yet.</h3><p>Publish a product from the administration page to show it here.</p></div>}
+            {catalogueError && <CatalogueError />}
+            {!loading && !catalogueError && !visibleProducts.length && <div className="shop-catalog-message"><Gem /><h3>No active pieces in this category yet.</h3><p>Publish a product from the administration page to show it here.</p></div>}
             {visibleProducts.map((product) => {
               const href = productUrl(product);
               const stock = getProductStock(product);
@@ -912,19 +915,22 @@ function ShopPage() {
 
 function ProductPage() {
   const slug = decodeURIComponent(window.location.pathname.split('/').filter(Boolean).pop() || '');
-  const { products: catalogueProducts, loading } = useCatalogueProducts();
+  const { products: catalogueProducts, loading, error: catalogueError } = useCatalogueProducts();
   const product = catalogueProducts.find((item) => item.slug === slug);
   const [selectedImage, setSelectedImage] = useState('');
+  const [selectedVariantId, setSelectedVariantId] = useState(null);
   const [quantity, setQuantity] = useState(1);
   useEffect(() => {
     if (!product) return;
     setSelectedImage(product.imageList[0] || product.image);
+    setSelectedVariantId(product.purchaseVariant?.id || null);
     setQuantity(1);
   }, [product?.id, product?.slug]);
 
   const images = product?.imageList || [];
-  const stock = product ? getProductStock(product) : undefined;
-  const displayPrice = product?.price;
+  const selectedVariant = product?.variants.find(variant => String(variant.id) === String(selectedVariantId)) || product?.purchaseVariant;
+  const stock = product ? Number(selectedVariant?.stock_quantity || 0) : undefined;
+  const displayPrice = product ? formatProductPrice(selectedVariant?.price ?? product.numericPrice) : '';
   const soldOut = stock === 0;
   useEffect(() => {
     if (loading) return undefined;
@@ -973,6 +979,8 @@ function ProductPage() {
     return <div className="page-shell product-page"><Header /><ProductDetailSkeleton /><SiteFooter /></div>;
   }
 
+  if (catalogueError) return <div className="page-shell product-page"><Header /><main className="product-state section-pad"><CatalogueError /></main><SiteFooter /></div>;
+
   if (!product) {
     return <div className="page-shell product-page"><Header /><main className="product-state section-pad"><Gem /><p>Piece unavailable</p><h1>This product is not currently published.</h1><a className="button button-dark" href="/shop">Return to the collection <ArrowRight size={15} /></a></main><SiteFooter /></div>;
   }
@@ -981,7 +989,8 @@ function ProductPage() {
     ...product,
     stock,
     price: displayPrice,
-    selectedVariantId: product.purchaseVariant?.id || null,
+    purchaseVariant: selectedVariant,
+    selectedVariantId: selectedVariant?.id || null,
   };
 
   return (
@@ -996,7 +1005,7 @@ function ProductPage() {
                 <button className={selectedImage === image ? 'is-active' : ''} onClick={() => setSelectedImage(image)} key={`${image}-${index}`}><img src={image} alt={`${product.name} view ${index + 1}`} /></button>
               ))}
             </div>
-            <div className="product-main-image"><img src={selectedImage} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</div>
+            <div className="product-main-image"><img src={selectedImage || product.image} alt={product.name} />{product.discountPercent > 0 && <span className="product-discount-badge">{product.discountPercent}% OFF</span>}</div>
           </div>
           <div className="product-information data-reveal" style={{ '--reveal-delay': '60ms' }}>
             <p className="product-type">{product.category}</p>
@@ -1010,6 +1019,7 @@ function ProductPage() {
               {product.color && <div><dt>Color</dt><dd>{product.color}</dd></div>}
               {product.size && <div><dt>Size</dt><dd>{product.size}</dd></div>}
             </dl>
+            {product.variants.length > 1 && <div className="product-variant-picker"><span>Choose your option</span><div>{product.variants.map((variant, index) => <button type="button" key={variant.id} className={String(variant.id) === String(selectedVariant?.id) ? 'is-active' : ''} aria-pressed={String(variant.id) === String(selectedVariant?.id)} disabled={Number(variant.stock_quantity) <= 0} onClick={() => { setSelectedVariantId(variant.id); setQuantity(1); }}><strong>{variant.variant_name || `Option ${index + 1}`}</strong><small>{Number(variant.stock_quantity) > 0 ? `${variant.stock_quantity} available` : 'Sold out'}</small></button>)}</div></div>}
             <div className="product-purchase-panel">
               <p className="quantity-label">Quantity</p>
               <div className="product-buy-row">
@@ -1111,7 +1121,7 @@ function ReviewsPage() {
           <div className="reviews-toolbar" aria-label="Filter reviews">{filters.map((item) => <button className={rating === item ? 'is-active' : ''} onClick={() => setRating(item)} key={item}>{item}</button>)}</div>
           <div className="reviews-grid">
             {visibleReviews.map((review, index) => <article className={`review-card ${review.image ? '' : 'is-text-only'}`} key={review.id || `${review.title}-${index}`}>
-              {review.image && <img src={review.image} alt="Customer review" />}
+              {review.image && <img src={freshAssetUrl(review.image)} alt="Customer review" />}
               <div className="review-card-copy"><span className="review-stars">{'★'.repeat(Number(review.rating || 5))}{'☆'.repeat(5 - Number(review.rating || 5))}</span><h3>{review.title}</h3><p>{review.copy}</p><footer><strong>{review.author}</strong><span>● Verified purchase</span></footer></div>
             </article>)}
             {!visibleReviews.length && <div className="reviews-empty"><Heart /><h3>{reviews.length ? 'No reviews match this filter.' : 'Customer stories are coming soon.'}</h3><p>{reviews.length ? 'Choose another rating to see more reviews.' : 'Genuine customer reviews will appear here once they are published.'}</p></div>}
@@ -1131,16 +1141,13 @@ function ReviewsPage() {
 
 function CartPage() {
   const isCmsPreview = new URLSearchParams(window.location.search).has('cmsPreview');
-  const cartContent = useSiteContent('cart', { hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' }, recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] }, benefits: { items: [{ title: 'Free shipping', text: 'Orders over RM250' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] }, paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }], shippingPrice: 15 });
+  const cartContent = useSiteContent('cart', { hero: { eyebrow: 'Shopping cart', title: 'Your Cart', description: 'Beautiful pieces are just a few steps away.', image: '/assets/cart/cart-hero.jpg' }, recommendations: { eyebrow: 'You might also like', title: 'Complete the Look', productIds: [] }, benefits: { items: [{ title: 'Free shipping', text: 'Orders from RM200 after discounts' }, { title: 'Beautiful packaging', text: 'Designed with care' }, { title: 'Secure payment', text: 'Your information is safe' }] }, paymentMethods: [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }], shippingPrice: 15 });
   const paymentMethods = (Array.isArray(cartContent.paymentMethods) ? cartContent.paymentMethods : []).filter((method) => method?.name?.trim() && (method.image?.trim() || method.information?.trim()));
   const availablePaymentMethods = paymentMethods.length ? paymentMethods : [{ id: 'touch-n-go-qr', name: "Touch 'n Go QR", kicker: 'DuitNow QR payment', title: 'Scan to complete your payment', information: 'Open your banking or e-wallet app, scan the QR code and complete the transfer.', image: '/assets/payment/duitnow-qr.png', confirmLabel: 'I have paid — continue' }];
   const shippingPrice = Math.max(0, Number(cartContent.shippingPrice ?? 15) || 0);
   const [cart, setCart] = useState(() => readCart());
+  useEffect(() => subscribeCart(setCart), []);
   const [promo, setPromo] = useState('');
-  const [promoMessage, setPromoMessage] = useState('');
-  const [promoSuccess, setPromoSuccess] = useState(null);
-  const [discount, setDiscount] = useState(0);
-  const [freeShipping, setFreeShipping] = useState(false);
   const [checkout, setCheckout] = useState({ fullName: '', email: '', phone: '', addressLine1: '', addressLine2: '', city: '', state: '', postcode: '', paymentMethod: 'touch-n-go-qr' });
   const [checkoutError, setCheckoutError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
@@ -1152,38 +1159,35 @@ function CartPage() {
   useEffect(() => {
     if (!availablePaymentMethods.some((method) => String(method.id) === String(checkout.paymentMethod))) setCheckout((current) => ({ ...current, paymentMethod: availablePaymentMethods[0].id }));
   }, [cartContent.paymentMethods]);
-  const { products: catalogueProducts } = useCatalogueProducts();
+  const { products: catalogueProducts, error: catalogueError } = useCatalogueProducts();
   const cartItems = cart.map((item) => {
     const product = catalogueProducts.find((candidate) => candidate.slug === item.slug || candidate.name === item.name);
     if (!product) return null;
-    const purchaseVariant = product.purchaseVariant;
+    const purchaseVariant = item.variantId ? product.variants.find(variant => String(variant.id) === String(item.variantId)) : product.purchaseVariant;
+    if (!purchaseVariant) return null;
     return {
       ...product,
       cartKey: item.key || `${item.slug || item.name}:`,
       quantity: item.quantity,
       variantId: item.variantId || purchaseVariant?.id || null,
-      price: product.price,
-      stock: product.stock,
+      price: formatProductPrice(purchaseVariant.price ?? product.numericPrice),
+      detail: [product.detail, purchaseVariant.variant_name === 'Default' ? '' : purchaseVariant.variant_name].filter(Boolean).join(' · '),
+      stock: Number(purchaseVariant.stock_quantity),
     };
   }).filter(Boolean);
   useEffect(() => {
     if (!catalogueProducts.length) return;
-    let changed = false;
-    const next = clampCartToCatalogue(cart, catalogueProducts);
-    changed = JSON.stringify(next) !== JSON.stringify(cart);
-    if (changed) {
-      setCart(next);
-      writeCart(next);
-    }
+    updateCart(current => clampCartToCatalogue(current, catalogueProducts));
   }, [catalogueProducts]);
   const subtotal = cartItems.reduce((total, item) => total + Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity, 0);
+  const { discount, freeShipping, message: promoMessage, success: promoSuccess, setSuccess: setPromoSuccess, apply: applyPromo, validating: promotionValidating, valid: promotionValid } = useCartPromotion({ subtotal, code: promo, phone: checkout.phone, email: checkout.email, apiUrl: API_URL });
   const total = subtotal * (1 - discount);
   const recommendationIds = (cartContent.recommendations.productIds || []).map(String);
   const availableRecommendations = catalogueProducts.filter((product) => !cart.some((item) => item.slug === product.slug || item.name === product.name));
   const selectedRecommendations = recommendationIds.map((id) => availableRecommendations.find((product) => String(product.id) === id)).filter(Boolean);
   const recommendations = [...selectedRecommendations, ...availableRecommendations.filter((product) => !recommendationIds.includes(String(product.id)))].slice(0, 4);
-  const cartBenefits = cartContent.benefits.items || [];
-  const syncCart = (next) => { setCart(next); writeCart(next); };
+  const cartBenefits = (cartContent.benefits.items || []).map(item => item?.text === 'Orders over RM250' && item?.title === 'Free shipping' ? { ...item, text: 'Orders from RM200 after discounts' } : item);
+  const syncCart = (mutate) => updateCart(mutate).catch(error => setCheckoutError(error.message));
   const updateQuantity = async (key, amount) => {
     const cartItem = cartItems.find((item) => item.cartKey === key);
     if (!cartItem) return;
@@ -1196,71 +1200,18 @@ function CartPage() {
       }
       return;
     }
-    syncCart(cart.map((item) => (item.key || `${item.slug || item.name}:`) === key ? { ...item, quantity: Math.max(1, Number(item.quantity) + amount) } : item));
+    await syncCart(current => current.map((item) => (item.key || `${item.slug || item.name}:`) === key ? { ...item, quantity: Math.max(1, Number(item.quantity) + amount) } : item));
   };
-  const removeItem = (key) => syncCart(cart.filter((item) => (item.key || `${item.slug || item.name}:`) !== key));
+  const removeItem = (key) => syncCart(current => current.filter((item) => (item.key || `${item.slug || item.name}:`) !== key));
   const addRecommended = async (product) => {
     try { setCart(await addCartItem(product)); } catch (error) { setCheckoutError(error.message); }
   };
-  useEffect(() => {
-    if (!subtotal || promo.trim()) return;
-    let active = true;
-    fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: '', phone: checkout.phone }) })
-      .then((response) => response.json()).then((result) => {
-        if (!active) return;
-        if (result.data?.valid) {
-          const shipsFree = Boolean(result.data.promotion.free_shipping);
-          setDiscount(Number(result.data.discountTotal) / subtotal);
-          setFreeShipping(shipsFree);
-          setPromoMessage(`${result.data.promotion.name} applied automatically — ${Number(result.data.promotion.discount_value)}% off${shipsFree ? ' + free shipping' : ''}`);
-        } else {
-          setDiscount(0);
-          setFreeShipping(false);
-          setPromoMessage('');
-        }
-      }).catch(() => {});
-    return () => { active = false; };
-  }, [subtotal, promo, checkout.phone]);
-  const applyPromo = async () => {
-    const code = promo.trim().toUpperCase();
-    if (!code) { setDiscount(0); setFreeShipping(false); setPromoMessage('Enter a promo code'); return; }
-    if (checkout.phone.replace(/\D/g, '').length < 7) { setDiscount(0); setFreeShipping(false); setPromoMessage('Enter your phone number first so we can check this promotion.'); return; }
-    try {
-      const response = await fetch(`${API_URL}/promotions/validate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code, email: checkout.email.trim(), phone: checkout.phone.trim() }) });
-      const result = await response.json();
-      if (!result.data?.valid) {
-        setDiscount(0);
-        setFreeShipping(false);
-        const promoReasons = {
-          INVALID_CODE: 'This promo code does not exist. Please check the spelling and try again.',
-          INACTIVE: 'This promo code is currently inactive.',
-          NOT_STARTED: `This promo code is not available yet${result.data?.startsAt ? ` — it starts ${new Date(result.data.startsAt).toLocaleString('en-MY')}` : ''}.`,
-          EXPIRED: 'This promo code has expired.',
-          USAGE_LIMIT_REACHED: 'This promo code has reached its usage limit.',
-          MINIMUM_SPEND: `Spend another RM ${Number(result.data?.shortfall || 0).toFixed(2)} to use this promo code (minimum RM ${Number(result.data?.minimumSpend || 0).toFixed(2)}).`,
-          FIRST_ORDER_ONLY: 'This promo code is for first-time buyers only. Cancelled or rejected orders do not affect your eligibility.',
-          FIRST_ORDER_DETAILS_REQUIRED: 'Enter your phone number first so we can check your first-order eligibility.'
-        };
-        setPromoMessage(promoReasons[result.data?.reason] || 'This promo code cannot be applied. Please check the offer requirements.');
-        return;
-      }
-      setDiscount(Number(result.data.discountTotal) / Math.max(subtotal, 1));
-      const shipsFree = Boolean(result.data.promotion.free_shipping);
-      setFreeShipping(shipsFree);
-      setPromoMessage(`${code} applied — ${Number(result.data.promotion.discount_value)}% off${shipsFree ? ' + free shipping' : ''}`);
-      setPromoSuccess({
-        code,
-        name: result.data.promotion.name,
-        percentage: Number(result.data.promotion.discount_value),
-        saving: Number(result.data.discountTotal),
-        freeShipping: shipsFree,
-      });
-    } catch { setDiscount(0); setFreeShipping(false); setPromoMessage('Unable to validate this promo code'); }
-  };
   const updateCheckout = (key) => (event) => { setCheckout((current) => ({ ...current, [key]: event.target.value })); setCheckoutError(''); };
   const openPayment = async () => {
+    if (promotionValidating || (promo.trim() && !promotionValid)) { setCheckoutError('Please apply a valid promo code or clear it before placing your order.'); return; }
     const required = ['fullName', 'phone', 'addressLine1', 'city', 'state', 'postcode'];
     if (required.some((key) => !checkout[key].trim())) { setCheckoutError('Please complete your contact and delivery details.'); return; }
+    if (!/^[+()\d\s.-]+$/.test(checkout.phone.trim()) || checkout.phone.replace(/\D/g, '').length < 7) { setCheckoutError('Please enter a valid phone number.'); return; }
     if (checkout.email && !/^\S+@\S+\.\S+$/.test(checkout.email)) { setCheckoutError('Please enter a valid email address or leave it blank.'); return; }
     if (cartItems.some((item) => !item.variantId)) { setCheckoutError('One of these products needs to be refreshed before checkout.'); return; }
     setPlacingOrder(true);
@@ -1277,7 +1228,11 @@ function CartPage() {
       const receipt = { id: order.orderNumber, orderId: order.id, paymentNoticeToken: order.paymentNoticeToken, placedAt: new Date().toISOString(), items: receiptItems, subtotal: order.subtotal, discount: order.discount / Math.max(order.subtotal, 1), shipping: order.shipping, total: order.total, status: order.status, paymentMethod: selectedPayment.name, paymentImage: selectedPayment.image, paymentInformation: selectedPayment.information, paymentWindowHours: order.paymentWindowHours, paymentExpiresAt: order.paymentExpiresAt };
       window.sessionStorage.setItem('chrisea-latest-receipt', JSON.stringify(receipt));
       catalogueProductsCache = null;
-      writeCart([]);
+      await updateCart(current => current.flatMap(item => {
+        const purchased = cartItems.find(line => line.cartKey === item.key);
+        const remaining = item.quantity - (purchased?.quantity || 0);
+        return remaining > 0 ? [{ ...item, quantity: remaining }] : [];
+      }));
       setPlacedOrder(receipt);
       setPaymentOpen(true);
     } catch (orderError) {
@@ -1300,6 +1255,8 @@ function CartPage() {
       setReportingPayment(false);
     }
   };
+
+  if (catalogueError) return <div className="page-shell cart-page"><Header /><main className="section-pad"><CatalogueError /></main><SiteFooter /></div>;
 
   return (
     <div className="page-shell cart-page">
@@ -1326,7 +1283,7 @@ function CartPage() {
             {cartItems.length && <div className="cart-customer-fields"><h3>Contact &amp; delivery</h3><label>Full name<input value={checkout.fullName} onChange={updateCheckout('fullName')} autoComplete="name" /></label><label>Email <small>Optional</small><input type="email" value={checkout.email} onChange={updateCheckout('email')} autoComplete="email" /></label><label>Phone<input value={checkout.phone} onChange={updateCheckout('phone')} autoComplete="tel" required /></label><label className="full">Address<input value={checkout.addressLine1} onChange={updateCheckout('addressLine1')} autoComplete="address-line1" /></label><label className="full">Address line 2 <small>Optional</small><input value={checkout.addressLine2} onChange={updateCheckout('addressLine2')} autoComplete="address-line2" /></label><label>City<input value={checkout.city} onChange={updateCheckout('city')} autoComplete="address-level2" /></label><label>State<input value={checkout.state} onChange={updateCheckout('state')} autoComplete="address-level1" /></label><label>Postcode<input value={checkout.postcode} onChange={updateCheckout('postcode')} autoComplete="postal-code" /></label><label>Payment<div className="cart-payment-method">Touch 'n Go QR</div></label></div>}
             {(cartItems.length > 0 || isCmsPreview) && <label className="cart-payment-picker">Payment method<select value={checkout.paymentMethod} onChange={updateCheckout('paymentMethod')}>{availablePaymentMethods.map((method, index) => <option value={method.id} key={method.id || index}>{method.name}</option>)}</select>{isCmsPreview && !cartItems.length && <small>Preview only — shown at checkout when the cart has items.</small>}</label>}
             {checkoutError && <p className="cart-checkout-error">{checkoutError}</p>}
-            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder} onClick={openPayment}>{placingOrder ? 'Creating order…' : 'Place order'} <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
+            {cartItems.length ? <button className="cart-checkout" type="button" disabled={placingOrder || promotionValidating} onClick={openPayment}>{placingOrder ? 'Creating order…' : 'Place order'} <ArrowRight size={14} /></button> : <span className="cart-checkout is-disabled">Your cart is empty</span>}
             <a className="cart-continue" href="/shop">Continue shopping</a>
             <div className="cart-promo"><label htmlFor="promo">Have a promo code?</label><div><input id="promo" value={promo} onChange={(event) => setPromo(event.target.value)} placeholder="Enter promo code" /><button onClick={applyPromo}>Apply</button></div>{promoMessage && <p>{promoMessage}</p>}</div>
             <div className="cart-benefits"><div><Truck /><span><strong>{cartBenefits[0]?.title}</strong>{cartBenefits[0]?.text}</span></div><div><Gift /><span><strong>{cartBenefits[1]?.title}</strong>{cartBenefits[1]?.text}</span></div><div><ShieldCheck /><span><strong>{cartBenefits[2]?.title}</strong>{cartBenefits[2]?.text}</span></div></div>
@@ -1354,7 +1311,7 @@ function CartPage() {
           {selectedPayment.kicker && <p className="qr-payment-kicker">{selectedPayment.kicker}</p>}
           <h2 id="qr-payment-title">{selectedPayment.title || selectedPayment.name}</h2>
           {selectedPayment.information && <p className="qr-payment-copy">{selectedPayment.information}</p>}
-          {selectedPayment.image && <div className="qr-payment-code"><img src={selectedPayment.image} alt={`${selectedPayment.name} payment information`} /></div>}
+          {selectedPayment.image && <div className="qr-payment-code"><img src={freshAssetUrl(selectedPayment.image)} alt={`${selectedPayment.name} payment information`} /></div>}
           <div className="qr-payment-total"><span>Amount to transfer · {placedOrder?.id}</span><strong>RM {Number(placedOrder?.total || 0).toFixed(2)}</strong></div>
           {paymentNoticeError && <p role="alert">{paymentNoticeError}</p>}
           <button className="qr-payment-confirm" type="button" disabled={reportingPayment} onClick={reportPlacedPayment}>{reportingPayment ? 'Reporting payment…' : 'I have paid — send for verification'} <ArrowRight size={14} /></button>
@@ -1378,7 +1335,30 @@ function ReceiptPage() {
   const [reportingPayment, setReportingPayment] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setCurrentTime(Date.now()), 60_000); return () => window.clearInterval(timer); }, []);
-  const paymentDeadline = receipt?.status === 'pending_verification' ? receipt.reviewExpiresAt : receipt?.paymentExpiresAt;
+  useEffect(() => {
+    if (!receipt?.orderId || !receipt?.paymentNoticeToken) return undefined;
+    let active = true;
+    const controller = new AbortController();
+    const refresh = async () => {
+      try {
+        const response = await fetch(`${API_URL}/orders/${receipt.orderId}/status`, { method: 'POST', cache: 'no-store', signal: controller.signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentNoticeToken: receipt.paymentNoticeToken }) });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (!active || !result.data?.status) return;
+        setReceipt(current => {
+          if (!current || current.orderId !== receipt.orderId) return current;
+          const updated = { ...current, ...result.data };
+          window.sessionStorage.setItem('chrisea-latest-receipt', JSON.stringify(updated));
+          return updated;
+        });
+      } catch { /* Keep the last known status while the network is unavailable. */ }
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; controller.abort(); window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [receipt?.orderId, receipt?.paymentNoticeToken, receipt?.status]);
+  const paymentDeadline = receipt?.status === 'pending_verification' ? receipt.reviewExpiresAt : receipt?.status === 'pending_payment' ? receipt.paymentExpiresAt : null;
   const paymentExpired = Boolean(paymentDeadline && currentTime >= new Date(paymentDeadline).getTime());
   const reportReceiptPayment = async () => {
     setReportingPayment(true);
@@ -1405,7 +1385,9 @@ function ReceiptPage() {
     })));
     const width = 1200;
     const itemHeight = 175;
-    const height = 900 + receipt.items.length * itemHeight;
+    const summaryRows = receiptSummaryRows(receipt);
+    const extraSummaryHeight = Math.max(0, summaryRows.length - 2) * 50;
+    const height = 900 + receipt.items.length * itemHeight + extraSummaryHeight;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -1424,7 +1406,7 @@ function ReceiptPage() {
     ctx.font = '500 60px Georgia, serif';
     ctx.fillText('CHRISÉA Jewellery', width / 2, 165);
     ctx.font = 'italic 25px Georgia, serif';
-    ctx.fillText('Order received. Payment pending.', width / 2, 220);
+    ctx.fillText(`Order received. ${receiptPaymentStatus(receipt)}.`, width / 2, 220);
     ctx.beginPath(); ctx.moveTo(90, 260); ctx.lineTo(width - 90, 260); ctx.stroke();
     ctx.textAlign = 'left';
     ctx.font = '600 15px Montserrat, sans-serif';
@@ -1434,7 +1416,7 @@ function ReceiptPage() {
     ctx.font = '28px Georgia, serif';
     ctx.fillText(receipt.id, 90, 350);
     ctx.fillText(placedDate, 455, 350);
-    ctx.fillText('Pending payment', 850, 350);
+    ctx.fillText(receiptPaymentStatus(receipt), 850, 350);
     ctx.beginPath(); ctx.moveTo(90, 390); ctx.lineTo(width - 90, 390); ctx.stroke();
     ctx.font = '500 38px Georgia, serif';
     ctx.fillText('Your pieces', 90, 450);
@@ -1470,18 +1452,20 @@ function ReceiptPage() {
       y += itemHeight;
     });
     ctx.font = '24px Georgia, serif';
-    ctx.fillText('Subtotal', 90, y + 20);
-    ctx.fillText('Shipping', 90, y + 70);
-    ctx.textAlign = 'right';
-    ctx.fillText(`RM ${receipt.subtotal.toFixed(2)}`, width - 90, y + 20);
-    ctx.fillText(Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary', width - 90, y + 70);
-    ctx.beginPath(); ctx.moveTo(90, y + 110); ctx.lineTo(width - 90, y + 110); ctx.stroke();
+    summaryRows.forEach((row, index) => {
+      ctx.textAlign = 'left';
+      ctx.fillText(row.label, 90, y + 20 + index * 50);
+      ctx.textAlign = 'right';
+      ctx.fillText(row.value, width - 90, y + 20 + index * 50);
+    });
+    const summaryBottom = y + 110 + extraSummaryHeight;
+    ctx.beginPath(); ctx.moveTo(90, summaryBottom); ctx.lineTo(width - 90, summaryBottom); ctx.stroke();
     ctx.textAlign = 'left';
     ctx.font = '500 38px Georgia, serif';
-    ctx.fillText('Total', 90, y + 175);
+    ctx.fillText('Total', 90, summaryBottom + 65);
     ctx.textAlign = 'right';
     ctx.font = '500 46px Georgia, serif';
-    ctx.fillText(`RM ${receipt.total.toFixed(2)}`, width - 90, y + 175);
+    ctx.fillText(`RM ${receipt.total.toFixed(2)}`, width - 90, summaryBottom + 65);
     ctx.textAlign = 'center';
     ctx.font = 'italic 25px Georgia, serif';
     ctx.fillText('Thank you for choosing CHRISÉA.', width / 2, height - 85);
@@ -1524,11 +1508,11 @@ function ReceiptPage() {
         'CHRISÉA RECEIPT INFORMATION',
         `Order number: ${receipt.id}`,
         `Order date: ${placedDate}`,
+        `Status: ${receiptPaymentStatus(receipt)}`,
         '',
         ...itemLines,
         '',
-        `Subtotal: RM ${receipt.subtotal.toFixed(2)}`,
-        `Shipping: ${Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary'}`,
+        ...receiptSummaryRows(receipt).map(row => `${row.label}: ${row.value}`),
         `Total: RM ${receipt.total.toFixed(2)}`,
       ].join('\n');
       const whatsappUrl = `https://wa.me/60167738560?text=${encodeURIComponent(message)}`;
@@ -1559,11 +1543,11 @@ function ReceiptPage() {
         {receipt ? <section className="receipt-layout section-pad">
           <article className="receipt-paper">
             <header className="receipt-paper-head"><div><p>Order summary</p><h2>CHRISÉA Jewellery</h2></div><button type="button" disabled={!receiptImageUrl} onClick={shareReceipt}><Share2 size={15} /> {receiptImageUrl ? 'Share order' : 'Preparing…'}</button></header>
-            <div className="receipt-status"><span>✓</span><div><p>Order received</p><h2>Payment is pending verification.</h2><small>A copy of these details can be kept for your records.</small></div></div>
-            <div className="receipt-meta"><div><span>Order number</span><strong>{receipt.id}</strong></div><div><span>Order date</span><strong>{placedDate}</strong></div><div><span>Payment window</span><strong>{paymentExpired ? 'Expired' : receipt.status === 'pending_verification' ? 'Awaiting verification' : 'Pending payment'}</strong></div></div>
+            <div className="receipt-status"><span>✓</span><div><p>Order received</p><h2>{receipt.status === 'pending_payment' ? 'Payment is pending.' : receiptPaymentStatus(receipt)}</h2><small>A copy of these details can be kept for your records.</small></div></div>
+            <div className="receipt-meta"><div><span>Order number</span><strong>{receipt.id}</strong></div><div><span>Order date</span><strong>{placedDate}</strong></div><div><span>Payment window</span><strong>{paymentExpired ? 'Expired' : receiptPaymentStatus(receipt)}</strong></div></div>
             <section className="receipt-items"><h2>Your pieces</h2>{receipt.items.map((item) => <article key={item.name}><img src={item.image} alt={item.name} /><div><h3>{item.name}</h3><p>{item.detail}</p><span>Quantity: {item.quantity}</span></div><strong>RM {(Number(item.price.replace(/[^0-9.]/g, '')) * item.quantity).toFixed(2)}</strong></article>)}</section>
             <aside className="receipt-summary"><h2>Receipt Summary</h2><div><span>Subtotal</span><strong>RM {receipt.subtotal.toFixed(2)}</strong></div>{receipt.discount > 0 && <div><span>Discount</span><strong>− RM {(receipt.subtotal * receipt.discount).toFixed(2)}</strong></div>}<div><span>Shipping</span><strong>{Number(receipt.shipping || 0) > 0 ? `RM ${Number(receipt.shipping).toFixed(2)}` : 'Complimentary'}</strong></div><footer><span>Total</span><strong>RM {receipt.total.toFixed(2)}</strong></footer></aside>
-            {(receipt.paymentImage || receipt.paymentInformation) && <aside className="receipt-payment">{paymentExpired ? <><h2>Payment window expired</h2><p>Please contact CHRISÉA with order number {receipt.id} before making a transfer.</p></> : receipt.status === 'pending_verification' ? <><h2>Payment awaiting verification</h2><p>We received your payment notice. Please share your payment record with CHRISÉA and quote order number {receipt.id}. Payment is confirmed only after our team checks the receiving account.</p></> : <><h2>Complete your payment</h2><p>{receipt.paymentInformation}</p>{receipt.paymentImage && <img src={receipt.paymentImage} alt={`${receipt.paymentMethod} payment code`} />}<p>Transfer RM {Number(receipt.total).toFixed(2)} by {new Date(receipt.paymentExpiresAt).toLocaleString('en-MY')}. Include order number {receipt.id} when sharing your payment record.</p>{receipt.paymentNoticeToken && <button type="button" disabled={reportingPayment} onClick={reportReceiptPayment}>{reportingPayment ? 'Reporting payment…' : 'I have paid — notify the team'}</button>}{paymentNoticeError && <p role="alert">{paymentNoticeError}</p>}</>}</aside>}
+            {(receipt.paymentImage || receipt.paymentInformation) && <aside className="receipt-payment">{receipt.status === 'payment_exception' || (paymentExpired && receipt.status === 'pending_verification') ? <><h2>Payment review needs attention</h2><p>Your payment notice was received. Please contact CHRISÉA with order number {receipt.id} so the team can check your payment.</p></> : receipt.status === 'pending_verification' ? <><h2>Payment awaiting verification</h2><p>We received your payment notice. Please share your payment record with CHRISÉA and quote order number {receipt.id}. Payment is confirmed only after our team checks the receiving account.</p></> : receipt.status !== 'pending_payment' ? <><h2>{receiptPaymentStatus(receipt)}</h2><p>Contact CHRISÉA with order number {receipt.id} if you need help with this order.</p></> : paymentExpired ? <><h2>Payment window expired</h2><p>Please contact CHRISÉA with order number {receipt.id} before making a transfer.</p></> : <><h2>Complete your payment</h2><p>{receipt.paymentInformation}</p>{receipt.paymentImage && <img src={freshAssetUrl(receipt.paymentImage)} alt={`${receipt.paymentMethod} payment code`} />}<p>Transfer RM {Number(receipt.total).toFixed(2)} by {new Date(receipt.paymentExpiresAt).toLocaleString('en-MY')}. Include order number {receipt.id} when sharing your payment record.</p>{receipt.paymentNoticeToken && <button type="button" disabled={reportingPayment} onClick={reportReceiptPayment}>{reportingPayment ? 'Reporting payment…' : 'I have paid — notify the team'}</button>}{paymentNoticeError && <p role="alert">{paymentNoticeError}</p>}</>}</aside>}
             <div className="receipt-paper-footer"><p>Thank you for choosing CHRISÉA.</p><div className="receipt-footer-actions"><button type="button" disabled={!receiptImageUrl} onClick={downloadReceipt}><Download size={14} /> Download receipt</button><a href="/#top"><House size={14} /> Back to home page</a></div></div>
             {shareMessage && <div className="receipt-share-message" role="status">{shareMessage}</div>}
           </article>
@@ -1576,7 +1560,7 @@ function ReceiptPage() {
 
 function App() {
   const home = useSiteContent('home', { hero: [{ eyebrow: 'CHRISÉA / COLLECTION 01', title: 'An Expression of Elegance.', description: 'Discover the beauty in every detail.', buttonLabel: 'Explore Collection', buttonHref: '#new', image: '/assets/hero/chrisea-jewelry-heart-hero.png' }, { eyebrow: 'CHRISÉA / COLLECTION 02', title: 'Timeless Beauty, Modern You.', description: 'Jewelry for every chapter.', buttonLabel: 'Shop Collection', buttonHref: '#new', image: '/assets/hero/chrisea-jewelry-ring-hero.png' }, { eyebrow: 'CHRISÉA / COLLECTION 03', title: 'A Gift That Lasts.', description: 'Celebrate every meaningful moment.', buttonLabel: 'Discover More', buttonHref: '#promotion', image: '/assets/hero/chrisea-jewelry-bracelet-hero.png' }], categories: categoryShowcase, arrivals: { eyebrow: 'New', title: 'New arrivals', description: 'Curated pieces for modern romantics.', buttonLabel: 'View all', productIds: [] }, editorial: { eyebrow: 'The CHRISÉA Edit', title: 'Styled by You.', subtitle: 'Everyday Elegance', description: 'Timeless pieces, effortless looks. See how our jewelry brings a touch of elegance to your everyday moments.' }, story: { eyebrow: 'Our story', title: 'More than jewellery', description: 'CHRISÉA celebrates modern romance through vintage-inspired details, luminous pearls and meaningful motifs. Each piece is selected to feel personal—made for everyday elegance, thoughtful gifts and the milestones worth remembering.', buttonLabel: 'Discover our story', mainImage: `${A}/pearl-turquoise-bracelet/03-lifestyle.png`, detailImage: `${A}/minimalist-pearl-bracelet/03-lifestyle.png` }, promise: { eyebrow: 'The CHRISÉA promise', title: 'Made to be treasured' } });
-  const { products: catalogueProducts, loading: productsLoading } = useCatalogueProducts();
+  const { products: catalogueProducts, loading: productsLoading, error: catalogueError } = useCatalogueProducts();
   const catalogueCategories = useCatalogueCategories();
   const selectedProductIds = (home.arrivals.productIds || []).map(String);
   const selectedProducts = selectedProductIds.map((id) => catalogueProducts.find((product) => String(product.id) === id)).filter(Boolean);
@@ -1612,7 +1596,8 @@ function App() {
           </div>
           <div className="product-track" id="products">
             {productsLoading && <div className="shop-catalog-message"><Sparkles /><h3>Preparing new arrivals…</h3></div>}
-            {!productsLoading && !homepageProducts.length && <div className="shop-catalog-message"><Gem /><h3>New pieces are coming soon.</h3></div>}
+            {catalogueError && <CatalogueError />}
+            {!productsLoading && !catalogueError && !homepageProducts.length && <div className="shop-catalog-message"><Gem /><h3>New pieces are coming soon.</h3></div>}
             {homepageProducts.map((product) => { const stock = getProductStock(product); const soldOut = stock === 0; return (
               <article className={`product-card ${soldOut ? 'is-sold-out' : ''}`} key={product.id || product.name}>
                 <div className="product-image">
@@ -1845,7 +1830,7 @@ function SiteRouter() {
   const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
   if (currentPath === ADMIN_ENTRY_PATH) return <React.Suspense fallback={<main className="site-error-screen"><p>Secure access</p><h1>Opening the atelier…</h1></main>}><AdminApp /></React.Suspense>;
   if (currentPath === '/admin' || currentPath.startsWith('/admin/')) {
-    return <main className="site-error-screen"><img src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry" /><p>404</p><h1>This page does not exist.</h1><div><a href="/">Return to boutique</a></div></main>;
+    return <main className="site-error-screen"><img src={freshAssetUrl("/assets/brand/chrisea-logo-full-transparent.png")} alt="CHRISÉA Jewelry" /><p>404</p><h1>This page does not exist.</h1><div><a href="/">Return to boutique</a></div></main>;
   }
   return currentPath.startsWith('/product/') ? <ProductPage /> : currentPath.startsWith('/shop') ? <ShopPage /> : currentPath.startsWith('/about') ? <AboutPage /> : currentPath.startsWith('/reviews') ? <ReviewsPage /> : currentPath.startsWith('/cart') ? <CartPage /> : currentPath.startsWith('/receipt') ? <ReceiptPage /> : <App />;
 }
@@ -1866,7 +1851,7 @@ class AppErrorBoundary extends React.Component {
 
   render() {
     if (!this.state.failed) return this.props.children;
-    return <main className="site-error-screen"><img src="/assets/brand/chrisea-logo-full-transparent.png" alt="CHRISÉA Jewelry" /><p>Something interrupted the page.</p><h1>Let’s reopen the atelier.</h1><div><button onClick={() => window.location.reload()}>Try again</button><a href="/">Return to boutique</a></div></main>;
+    return <main className="site-error-screen"><img src={freshAssetUrl("/assets/brand/chrisea-logo-full-transparent.png")} alt="CHRISÉA Jewelry" /><p>Something interrupted the page.</p><h1>Let’s reopen the atelier.</h1><div><button onClick={() => window.location.reload()}>Try again</button><a href="/">Return to boutique</a></div></main>;
   }
 }
 

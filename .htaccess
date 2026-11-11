@@ -33,6 +33,9 @@ Options -Indexes
 
   # Cache fingerprinted static assets.
   <FilesMatch "\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf)$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "-[A-Za-z0-9_-]{8,}\.(?:css|js|mjs)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>
@@ -49,8 +52,8 @@ Options -Indexes
   ExpiresByType text/html "access plus 0 seconds"
   ExpiresByType text/css "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
-  ExpiresByType image/svg+xml "access plus 1 year"
-  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 0 seconds"
+  ExpiresByType image/webp "access plus 0 seconds"
   ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 

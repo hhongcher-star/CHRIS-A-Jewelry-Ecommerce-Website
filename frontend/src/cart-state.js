@@ -26,7 +26,9 @@ export function clampCartToCatalogue(cart, products) {
   return parseCart(cart).flatMap((item) => {
     const product = products.find((candidate) => candidate.slug === item.slug || candidate.name === item.name);
     if (!product) return [];
-    const stock = Math.max(0, Math.floor(Number(product.stock) || 0));
+    const variant = item.variantId && Array.isArray(product.variants) ? product.variants.find(candidate => String(candidate.id) === String(item.variantId)) : null;
+    if (item.variantId && Array.isArray(product.variants) && !variant) return [];
+    const stock = Math.max(0, Math.floor(Number(variant ? variant.stock_quantity : product.stock) || 0));
     return stock ? [{ ...item, quantity: Math.min(item.quantity, stock) }] : [];
   });
 }

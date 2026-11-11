@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { createOrder, reportPayment } from '../controllers/order.controller.js';
+import { createOrder, getOrderStatus, reportPayment } from '../controllers/order.controller.js';
 import { asyncHandler } from '../utils/async-handler.js';
 
 export const orderRouter = Router();
@@ -18,3 +18,4 @@ orderRouter.post('/:id/payment-notice', rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false
 }), asyncHandler(reportPayment));
+orderRouter.post('/:id/status', rateLimit({ windowMs: 15 * 60 * 1000, limit: 120, standardHeaders: 'draft-7', legacyHeaders: false }), asyncHandler(getOrderStatus));

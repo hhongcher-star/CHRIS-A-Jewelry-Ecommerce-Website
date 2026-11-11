@@ -21,10 +21,12 @@ async function loadPublicProducts(whereClause = '', params = []) {
 
   return products.map((product) => {
     const productVariants = variants.filter((variant) => Number(variant.product_id) === Number(product.id));
+    const purchaseVariant = productVariants.find(variant => Number(variant.stock_quantity) > 0) || productVariants[0] || null;
     return {
       ...product,
       images: images.filter((image) => Number(image.product_id) === Number(product.id)),
-      purchase_variant: productVariants[0] || null,
+      variants: productVariants,
+      purchase_variant: purchaseVariant,
       stock_quantity: productVariants.reduce((sum, variant) => sum + Number(variant.stock_quantity || 0), 0)
     };
   });

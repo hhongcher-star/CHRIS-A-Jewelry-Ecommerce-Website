@@ -31,7 +31,7 @@ const adminLoginLimiter = rateLimit({
 });
 
 const email = z.string().trim().toLowerCase().email().max(255);
-const password = z.string().min(10).max(128);
+const password = z.string().min(10).max(128).refine((value) => Buffer.byteLength(value, 'utf8') <= 72, 'Password must not exceed 72 bytes.');
 const registerSchema = z.object({
   email,
   password,

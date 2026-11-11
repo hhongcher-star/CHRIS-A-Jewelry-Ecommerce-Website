@@ -43,10 +43,10 @@ export async function registerUser(input) {
        VALUES (?, ?, ?, ?)`,
       [input.email, passwordHash, input.fullName, input.phone || null]
     );
-    const [rows] = await connection.execute(`SELECT ${publicUserColumns} FROM users WHERE id = ?`, [result.insertId]);
+    const [rows] = await connection.execute(`SELECT ${publicUserColumns}, password_hash FROM users WHERE id = ?`, [result.insertId]);
     const tokens = await issueSession(connection, rows[0]);
     await connection.commit();
-    return { user: rows[0], ...tokens };
+    return { user: publicUser(rows[0]), ...tokens };
   } catch (error) {
     await connection.rollback();
     if (error.code === 'ER_DUP_ENTRY') {
@@ -83,7 +83,9 @@ async function createLoginSession(user) {
 }
 
 export async function loginUser(input) {
-  return createLoginSession(await authenticateCredentials(input));
+  const user = await authenticateCredentials(input);
+  if (user.role === 'admin') throw new AppError(401, 'INVALID_CREDENTIALS', 'The email or password is incorrect.');
+  return createLoginSession(user);
 }
 
 export async function loginAdminUser(input) {
@@ -156,6 +158,11 @@ export async function revokeSession(refreshToken) {
 
 export async function getUserById(id) {
   const [rows] = await pool.execute(`SELECT ${publicUserColumns} FROM users WHERE id = ? LIMIT 1`, [id]);
+  return rows[0] || null;
+}
+
+export async function getAuthenticationUser(id) {
+  const [rows] = await pool.execute(`SELECT ${publicUserColumns}, password_hash FROM users WHERE id = ? LIMIT 1`, [id]);
   return rows[0] || null;
 }
 

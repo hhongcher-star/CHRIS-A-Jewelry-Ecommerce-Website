@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/**', route => route.fulfill({
+    json: { data: { products: [], categories: [], content: {} } },
+    headers: { 'access-control-allow-origin': '*' },
+  }));
+});
+
 test('malformed persisted cart cannot crash the cart page', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => localStorage.setItem('chrisea-cart', '{bad json'));

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
+import { freshAssetUrl } from '../asset-url.js';
 
 const SLIDE_DURATION = 4000;
 
@@ -114,13 +115,13 @@ export default function HeroSlider({ content, imageAdjustments = {}, mobileImage
           >
             <img
               className={slide.mobileImage ? 'cms-image-desktop has-mobile' : 'cms-image-desktop'}
-              src={slide.image}
+              src={freshAssetUrl(slide.image)}
               alt=""
               style={{ '--desktop-position': slide.position, '--mobile-position': slide.mobilePosition, '--desktop-zoom': (slide.desktopZoom || 100) / 100, '--mobile-zoom': (slide.mobileZoom || slide.desktopZoom || 100) / 100, '--desktop-fit': slide.desktopFit || 'contain', '--mobile-fit': slide.mobileFit || slide.desktopFit || 'contain' }}
             />
             {slide.mobileImage && <img
               className="cms-image-mobile"
-              src={slide.mobileImage}
+              src={freshAssetUrl(slide.mobileImage)}
               alt=""
               style={{ '--mobile-position': slide.mobilePosition, '--mobile-zoom': (slide.mobileZoom || 100) / 100, '--mobile-fit': slide.mobileFit || 'cover' }}
             />}

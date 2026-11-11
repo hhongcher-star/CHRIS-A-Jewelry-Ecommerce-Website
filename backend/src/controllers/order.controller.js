@@ -8,7 +8,7 @@ const checkoutSchema = z.object({
   customer: z.object({
     fullName: z.string().trim().min(2).max(150),
     email: z.string().trim().toLowerCase().email().max(255).optional().or(z.literal('')).default(''),
-    phone: z.string().trim().min(7).max(30),
+    phone: z.string().trim().min(7).max(30).refine(value => /^[+()\d\s.-]+$/.test(value) && value.replace(/\D/g, '').length >= 7, 'Enter a valid phone number.'),
     addressLine1: z.string().trim().min(5).max(255),
     addressLine2: z.string().trim().max(255).optional().default(''),
     city: z.string().trim().min(2).max(100),
@@ -262,4 +262,16 @@ export async function reportPayment(req, res) {
   } finally {
     connection.release();
   }
+}
+
+export async function getOrderStatus(req, res) {
+  await ensurePaymentSchema();
+  const id = Number(req.params.id);
+  const parsed = z.object({ paymentNoticeToken: z.string().regex(/^[a-f0-9]{64}$/) }).safeParse(req.body);
+  if (!Number.isSafeInteger(id) || id < 1 || !parsed.success) throw new AppError(400, 'INVALID_PAYMENT_NOTICE', 'The payment notice is invalid.');
+  const [rows] = await pool.query('SELECT status, UNIX_TIMESTAMP(updated_at) AS updated_at FROM orders WHERE id = ? AND payment_notice_token_hash = ? AND deleted_at IS NULL LIMIT 1', [id, paymentNoticeHash(parsed.data.paymentNoticeToken)]);
+  const order = rows[0];
+  if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'This order could not be found.');
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ success: true, data: { status: order.status, ...(order.status === 'pending_verification' ? { reviewExpiresAt: new Date(Number(order.updated_at) * 1000 + PAYMENT_REVIEW_HOURS * 60 * 60 * 1000).toISOString() } : {}) } });
 }

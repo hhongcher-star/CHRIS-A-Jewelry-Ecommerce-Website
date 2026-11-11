@@ -1,6 +1,6 @@
 import { AppError } from '../errors/app-error.js';
-import { getUserById } from '../services/auth.service.js';
-import { verifyAccessToken } from '../services/token.service.js';
+import { getAuthenticationUser } from '../services/auth.service.js';
+import { credentialVersion, verifyAccessToken } from '../services/token.service.js';
 import { asyncHandler } from '../utils/async-handler.js';
 
 export const authenticate = asyncHandler(async (req, _res, next) => {
@@ -9,11 +9,12 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   if (!token) throw new AppError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required.');
 
   const payload = verifyAccessToken(token);
-  const user = await getUserById(payload.sub);
-  if (!user || user.status !== 'active') {
+  const user = await getAuthenticationUser(payload.sub);
+  if (!user || user.status !== 'active' || payload.credentialVersion !== credentialVersion(user.password_hash)) {
     throw new AppError(401, 'AUTHENTICATION_REQUIRED', 'Authentication is required.');
   }
-  req.user = user;
+  const { password_hash: _passwordHash, ...safeUser } = user;
+  req.user = safeUser;
   next();
 });
 
